@@ -464,6 +464,14 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.022em}
 body.has-install .dock{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
 body.composing .player video{max-height:30vh;transition:max-height .4s var(--spring)}
 body.composing .dock{visibility:hidden}
+.sheet.half{gap:12px}
+.sheet.half .cathint,.sheet.half .moment .mhint{display:none}
+.sheet.half legend{display:flex;gap:6px;align-items:baseline;white-space:nowrap}
+.sheet.half .sugg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:0 20px}
+.sheet.half .sugg::-webkit-scrollbar{display:none}
+.sheet.half .sugg button{white-space:nowrap;flex:none}
+.sheet.half .composer textarea{min-height:64px}
+.sheet .sendrow{position:sticky;bottom:calc(-20px - env(safe-area-inset-bottom,0px));z-index:3;background:var(--panel);margin:0 -20px;padding:10px 20px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -1px 0 var(--line)}
 .scrim.light{pointer-events:none;background:transparent}
 .moment{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;border-radius:14px;background:var(--fill2);flex-wrap:wrap}
 .moment .mlabel{font-size:13px;font-weight:600;color:var(--muted);margin-right:auto}
