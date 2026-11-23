@@ -196,7 +196,7 @@ button.row:hover{background:var(--panel2)}
 .seg button.on{background:var(--panel2);color:var(--ink)}
 
 /* ===== video card (client + admin detail) ===== */
-.video{overflow:hidden;margin-bottom:16px}
+.video{overflow:hidden;overflow:clip;margin-bottom:16px}
 .player{position:relative;background:#000;display:grid;place-items:center}
 .player video{width:100%;max-height:70vh;display:block;background:#000}
 .player .ext{padding:40px 20px;text-align:center;color:#c4c8cf;display:grid;gap:10px}
@@ -457,6 +457,21 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.022em}
 .rise{animation:rise .6s var(--spring) both}
 .logo i{border-radius:8px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 80%,#fff),var(--accent))}
 .form h2{font-size:34px}
+.player video{max-height:min(60vh,600px)}
+.dock{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px;padding:8px;border-radius:20px;background:var(--mat);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);box-shadow:0 8px 30px rgba(0,0,0,.25),inset 0 0 0 .5px var(--mat-line)}
+.dock .btn{min-height:50px;border-radius:14px;font-size:16px}
+.dock .btn.fix{background:var(--fill);color:var(--ink)}
+body.has-install .dock{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+body.composing .player video{max-height:30vh;transition:max-height .4s var(--spring)}
+body.composing .dock{visibility:hidden}
+.scrim.light{pointer-events:none;background:transparent}
+.moment{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;border-radius:14px;background:var(--fill2);flex-wrap:wrap}
+.moment .mlabel{font-size:13px;font-weight:600;color:var(--muted);margin-right:auto}
+.moment output{font:600 18px var(--mono);min-width:58px;text-align:center}
+.mstep{border:0;background:var(--panel);border-radius:10px;min-width:44px;height:36px;font-weight:600;font-size:13px}
+.moment .mhint{flex-basis:100%;font-size:11.5px;color:var(--muted);padding-bottom:2px}
+.sheet.half{max-height:min(68dvh,var(--vvh,100dvh))}
+.sheet.typing .moment{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -690,11 +705,11 @@ function clientVideo(v){
   return `<article class="card video rise">
    <header class="vhead"><div style="min-width:0"><h3>${esc(v.title)}</h3><div class="vsub"><span class="dotc ${v.status}"></span>${CLIENT_STATUS[v.status]} · Updated ${ago(v.updated_at||v.created_at)}</div></div>${versionBar(v)}</header>
    ${playerHtml(v)}
+   ${v.status==="pending"?`<div class="dock"><button class="btn fix lg" data-change="${v.id}">Request changes</button><button class="btn ok lg" data-approve="${v.id}">Approve</button></div>`:""}
    <div class="vbody">
     ${v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:""}
     ${scrubHtml(v,vn)}
-    ${v.status==="pending"?`<div class="decide"><button class="btn ok lg" data-approve="${v.id}">Approve</button><button class="btn fix lg" data-change="${v.id}">Request changes</button></div>
-      <div class="small muted">Tip: pause where you want a change, tap Request changes. You can add several notes in one go.</div>`
+    ${v.status==="pending"?`<div class="small muted">Tip: pause where something should change, then tap Request changes.</div>`
     :v.status==="changes"?`<div class="banner fix">We received your notes and are working on them.</div><button class="btn sm" data-change="${v.id}" style="justify-self:start">Add another note</button>`
     :`<div class="banner ok">You approved this video.<button class="btn ghost sm" data-undo="${v.id}" style="margin-left:auto">Undo approval</button></div>`}
     ${notesByVersion(v,false)}
@@ -706,13 +721,10 @@ function changeSheet(v,vid){
     text:["Spelling mistake","Change the wording","Text is too small","Text appears too fast"],
     images:["Use a different picture","Picture is blurry","Remove this graphic","Add our logo"]};
   openSheet(`<div class="shead"><div><div class="label">Request changes</div><h2>${esc(v.title)}</h2><span class="sentpill" id="sCount" hidden></span></div><button type="button" class="btn sm" id="sClose">Close</button></div>
-   <fieldset style="border:0;padding:0;margin:0;display:grid;gap:8px"><legend class="field" style="font-size:13px;font-weight:600;color:var(--ink2);padding:0;margin-bottom:8px">What should change? <span style="font-weight:500;color:var(--muted)">· pick all that apply</span></legend>
+   <fieldset style="border:0;padding:0;margin:0;display:grid;gap:8px"><legend class="field" style="font-size:13px;font-weight:600;color:var(--ink2);padding:0;margin-bottom:8px">What’s wrong? <span style="font-weight:500;color:var(--muted)">· tap all that apply</span></legend>
      <div class="cats" id="cats">${Object.entries(CATS).map(([k,c],i)=>`<button type="button" data-k="${k}" class="${i?"":"on"}" aria-pressed="${!i}" style="--c:${c.c}"><i>${c.ic}</i>${c.label}<small>${c.hint}</small></button>`).join("")}</div><div class="cathint" id="catHint">${CATS.clip.hint}</div></fieldset>
-   ${vid?`<div class="frame" id="frameBox"><div class="frow"><video id="sFrame" muted playsinline preload="auto" aria-hidden="true" src="${esc((vid.currentSrc||vid.src).split("#")[0])}#t=${Math.floor(vid.currentTime)}"></video>
-     <div class="tc"><span class="small muted">Moment in the video <span style="opacity:.7">· drag the bar</span></span>
-       <span class="timectl"><button type="button" class="btn" id="tMinus" aria-label="1 second earlier">&minus;1s</button><output id="sTime" aria-live="polite">${fmt(vid.currentTime)}</output><button type="button" class="btn" id="tPlus" aria-label="1 second later">+1s</button></span></div></div>
-       <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,Math.floor(vid.duration||0))}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"><div class="ends"><span>0:00</span><span>${fmt(vid.duration||0)}</span></div></div></div>`:""}
-   <label class="switch"><input type="checkbox" id="sWhole"> About the whole video, not one moment</label>
+   ${vid?`<div class="moment" id="frameBox"><span class="mlabel">Moment</span><button type="button" class="mstep" id="tMinus" aria-label="1 second earlier">&minus;1s</button><output id="sTime" aria-live="polite">${fmt(vid.currentTime)}</output><button type="button" class="mstep" id="tPlus" aria-label="1 second later">+1s</button><span class="mhint">Scrub the video above to change</span></div>`:""}
+   <label class="switch"><input type="checkbox" id="sWhole"> Whole video, not one moment</label>
    <div class="field"><label for="sNote" style="display:flex;justify-content:space-between;align-items:center">Describe the change <span class="attime" id="atTime">at <b id="atT"></b></span></label>
      <div class="sugg" id="sugg"></div>
      <div class="composer"><textarea class="input" id="sNote" placeholder="Type your note, or tap the mic to talk"></textarea>${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="micbtn" id="recBtn" aria-label="Record a voice note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>`:""}</div>
@@ -721,7 +733,8 @@ function changeSheet(v,vid){
   ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=vid&&vid.duration?Math.floor(vid.duration):99999;
     const fr=$("#sFrame");const show=()=>{if(fr&&fr.readyState>=1){try{fr.currentTime=secs+0.05}catch(e){}}};if(fr){fr.addEventListener("loadedmetadata",()=>{const pr=fr.play();(pr&&pr.then?pr:Promise.resolve()).then(()=>{fr.pause();show()}).catch(show)},{once:true});fr.load()}
     const setT=s=>{secs=Math.max(0,Math.min(max,s));$("#sTime").textContent=fmt(secs);$("#atT").textContent=fmt(secs);const rg=$("#sRange");if(rg){rg.value=secs;rg.style.setProperty("--p",(secs/(+rg.max||1)*100)+"%")}if(vid)vid.currentTime=secs;show()};
-    if(vid){$("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);setT(secs)}
+    if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);$("#sTime").textContent=fmt(secs);$("#atT").textContent=fmt(secs)};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
+      $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);setT(secs)}
     const fillSugg=()=>{$("#sugg").innerHTML=[...cats].flatMap(k=>SUGG[k].slice(0,cats.size>1?2:4)).map(t=>`<button type="button">${esc(t)}</button>`).join("")};fillSugg();
     $("#sugg").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ta=$("#sNote");ta.value=ta.value.trim()?ta.value.trim()+". "+b.textContent:b.textContent;ta.focus()};
     $("#atT").textContent=vid?fmt(secs):"Whole video";
@@ -948,7 +961,7 @@ function wire(){
     render()});
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
   on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
-    $("#sheet").classList.add("half");$("#scrim").classList.add("light");changeSheet(v,vid)});
+    $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid)});
   on("[data-ctab]",b=>{ctab=b.dataset.ctab;render()});
   on("[data-vf]",b=>{vfilter=b.dataset.vf;render()});
   on("[data-open]",b=>{openVideo=b.dataset.open;render();scrollTo(0,0)});
@@ -982,7 +995,7 @@ function openSheet(html,after){lastFocus=document.activeElement;$("#sheetBody").
   $("#sheetBody").querySelectorAll("input,textarea").forEach(el=>el.addEventListener("focus",()=>setTimeout(()=>el.scrollIntoView({block:"center",behavior:"smooth"}),300)))}
 let sheetCleanup=null;
 if(window.visualViewport){const vv=visualViewport;const fit=()=>{const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty("--kb",kb+"px");document.documentElement.style.setProperty("--vvh",(vv.height-12)+"px")};vv.addEventListener("resize",fit);vv.addEventListener("scroll",fit);fit()}
-function closeSheet(){setTimeout(()=>{$("#sheet").classList.remove("half","typing");$("#scrim").classList.remove("light")},260);if(sheetCleanup){try{sheetCleanup()}catch(e){}sheetCleanup=null}$("#scrim").classList.remove("show");$("#sheet").classList.remove("show");document.body.classList.remove("lock");
+function closeSheet(){document.body.classList.remove("composing");setTimeout(()=>{$("#sheet").classList.remove("half","typing");$("#scrim").classList.remove("light")},260);if(sheetCleanup){try{sheetCleanup()}catch(e){}sheetCleanup=null}$("#scrim").classList.remove("show");$("#sheet").classList.remove("show");document.body.classList.remove("lock");
   setTimeout(()=>{$("#scrim").hidden=true;$("#sheet").hidden=true;if(pendingRender){pendingRender=false;render()}if(lastFocus&&lastFocus.focus)lastFocus.focus({preventScroll:true})},250)}
 $("#scrim").onclick=closeSheet;$("#sheetX").onclick=closeSheet;document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
 
