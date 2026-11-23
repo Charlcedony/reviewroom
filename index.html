@@ -814,11 +814,12 @@ function changeSheet(v,vid){
       tick=setInterval(()=>{const s=(Date.now()-t0)/1000;$("#recT").textContent=fmt(s);if(s>=180){clearInterval(tick);mr.stop()}},250)}
     if($("#recBtn")){$("#recBtn").onclick=start;sheetCleanup=stopAll}
     let markBlob=null,cv=null,drawing=false;const drawBtn=$("#drawBtn");
-    const clearMark=()=>{if(cv){cv.remove();cv=null}markBlob=null;drawing=false;if(drawBtn){drawBtn.textContent="✏️ Draw";drawBtn.classList.remove("on")}};
+    const clearMark=()=>{if(cv){cv._ro&&cv._ro.disconnect();cv.remove();cv=null}markBlob=null;drawing=false;if(drawBtn){drawBtn.textContent="✏️ Draw";drawBtn.classList.remove("on")}};
     if(drawBtn&&vid)drawBtn.onclick=()=>{
       if(drawing){drawing=false;cv.classList.add("set");drawBtn.textContent=markBlob?"✓ Marked · redo":"✏️ Draw";drawBtn.classList.toggle("on",!!markBlob);if(!markBlob)clearMark();return}
       if(cv)clearMark();vid.pause();const bx=vbox(vid);
       cv=document.createElement("canvas");cv.className="markcv";cv.width=Math.round(bx.w*2);cv.height=Math.round(bx.h*2);cv.style.cssText=`left:${bx.x}px;top:${bx.y}px;width:${bx.w}px;height:${bx.h}px`;vid.parentElement.appendChild(cv);
+      const place=()=>{if(!cv)return;const q=vbox(vid);cv.style.left=q.x+"px";cv.style.top=q.y+"px";cv.style.width=q.w+"px";cv.style.height=q.h+"px"};if(window.ResizeObserver){const ro=new ResizeObserver(place);ro.observe(vid);cv._ro=ro}
       const g=cv.getContext("2d");g.scale(2,2);g.lineWidth=5;g.lineCap="round";g.lineJoin="round";g.strokeStyle="#ff3b30";g.shadowColor="rgba(0,0,0,.45)";g.shadowBlur=4;let dn=false;
       const pt=e=>{const rc=cv.getBoundingClientRect();return[e.clientX-rc.left,e.clientY-rc.top]};
       cv.onpointerdown=e=>{dn=true;try{cv.setPointerCapture(e.pointerId)}catch(x){}const[a,b2]=pt(e);g.beginPath();g.moveTo(a,b2);e.preventDefault()};
