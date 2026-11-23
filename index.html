@@ -1,0 +1,896 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Review Room</title>
+<meta name="description" content="Review, approve and comment on your videos.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b0c0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Review Room">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+/* Product UI. Admin: sidebar (desktop) / bottom tabs (phone). Client: single screen, top bar only. */
+:root{
+  --bg:#0b0c0e;--bg2:#111316;--panel:#15171b;--panel2:#1c1f24;--line:#25282e;--line2:#30343b;
+  --ink:#f3f4f6;--ink2:#c4c8cf;--muted:#868b94;
+  --accent:#3b6cff;--accent-ink:#fff;--accent-soft:rgba(59,108,255,.14);
+  --ok:#22c55e;--ok-soft:rgba(34,197,94,.12);--fix:#f97316;--fix-soft:rgba(249,115,22,.13);--wait:#94a3b8;--wait-soft:rgba(148,163,184,.12);
+  --clip:#60a5fa;--text:#c084fc;--img:#facc15;
+  --shadow:0 24px 64px rgba(0,0,0,.5);
+  --font:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:"Geist Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root{
+  --bg:#f7f8fa;--bg2:#f1f3f6;--panel:#fff;--panel2:#f4f5f7;--line:#e4e7ec;--line2:#d5d9e0;
+  --ink:#0f1115;--ink2:#373b43;--muted:#6b717c;
+  --accent:#2a5bf6;--accent-soft:rgba(42,91,246,.1);
+  --ok:#16a34a;--ok-soft:rgba(22,163,74,.1);--fix:#ea580c;--fix-soft:rgba(234,88,12,.1);--wait:#64748b;--wait-soft:rgba(100,116,139,.1);
+  --clip:#2563eb;--text:#9333ea;--img:#ca8a04;--shadow:0 20px 50px rgba(15,17,21,.12);color-scheme:light}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{letter-spacing:-.025em;margin:0;font-weight:650;text-wrap:balance}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.label{font-size:12px;font-weight:600;color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* buttons & fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);font-weight:600;font-size:14px;white-space:nowrap;transition:transform .08s,border-color .15s}
+.btn:active{transform:scale(.98)}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ok{background:var(--ok);color:#04130a;border-color:var(--ok)}
+.btn.fix{background:transparent;color:var(--fix);border-color:var(--fix)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink2)}
+.btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+.btn.lg{min-height:52px;font-size:16px;border-radius:11px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5;cursor:default}
+.field{display:grid;gap:6px}
+.field>label{font-size:13px;font-weight:600;color:var(--ink2)}
+.input{width:100%;min-height:48px;padding:0 14px;border-radius:10px;border:1px solid var(--line2);background:var(--bg2);font-size:16px}
+textarea.input{padding:12px 14px;min-height:100px;resize:vertical;line-height:1.5}
+.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 4px var(--accent-soft)}
+.msg{font-size:13px;min-height:1.1em;color:var(--fix)}
+.msg.good{color:var(--ok)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip.pending{background:var(--accent-soft);color:var(--accent)}
+.chip.changes{background:var(--fix-soft);color:var(--fix)}
+.chip.approved{background:var(--ok-soft);color:var(--ok)}
+.chip.plain{background:var(--panel2);color:var(--ink2)}
+.chip.plain::before{display:none}
+.tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--c)}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--accent-soft);color:var(--accent);flex:none;border:none}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em}
+.logo i{width:26px;height:26px;border-radius:7px;background:var(--accent);display:grid;place-items:center}
+.logo i::after{content:"";border-left:8px solid #fff;border-top:5px solid transparent;border-bottom:5px solid transparent;margin-left:2px}
+
+/* ===== auth ===== */
+.auth{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr}
+.stage{position:relative;overflow:hidden;background:#0b0c0e;color:#f3f4f6;padding:44px;display:flex;flex-direction:column;justify-content:space-between;gap:30px}
+.stage::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(59,108,255,.12),transparent 60%)}
+.stage::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+.stage>*{position:relative}
+.stage>.orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;pointer-events:none;animation:drift 14s ease-in-out infinite alternate}
+.stage>.o1{width:420px;height:420px;background:#3b6cff;top:-120px;right:-80px}
+.stage>.o2{width:320px;height:320px;background:#7c3aed;bottom:-100px;left:-60px;animation-delay:-6s;opacity:.35}
+@keyframes drift{to{transform:translate(-40px,30px) scale(1.1)}}
+.mock{position:relative;height:250px;max-width:460px}
+.mframe{position:absolute;inset:0 40px 30px 0;border-radius:16px;background:linear-gradient(135deg,#1b2340,#0f1220 60%,#241a3a);border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 60px rgba(0,0,0,.5);overflow:hidden}
+.mplay{position:absolute;left:50%;top:45%;width:54px;height:54px;margin:-27px;border-radius:50%;background:rgba(255,255,255,.14);backdrop-filter:blur(6px)}
+.mplay::after{content:"";position:absolute;left:22px;top:17px;border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent}
+.mbar{position:absolute;left:16px;right:16px;bottom:16px;height:4px;border-radius:9px;background:rgba(255,255,255,.18)}
+.mbar b{position:absolute;left:0;top:0;bottom:0;width:58%;border-radius:9px;background:#3b6cff}
+.mbar i{position:absolute;top:-4px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--c);border:2px solid #0f1220;z-index:1}
+.mnote{position:absolute;display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:12px;background:rgba(22,24,30,.85);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);font-size:12px;color:#b6bcc6;box-shadow:0 12px 30px rgba(0,0,0,.4);animation:float 5s ease-in-out infinite}
+.mnote b{display:block;color:#f3f4f6;font-size:13px}.mnote span{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.mnote.n1{right:0;top:40px}.mnote.n2{left:24px;bottom:0;animation-delay:-2.5s}
+@keyframes float{50%{transform:translateY(-8px)}}
+@media (max-width:860px){.mock{display:none}.stage>.o1{width:260px;height:260px}}
+.vhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px}
+.vhead h3{margin:0;font-size:17px;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vsub{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-top:2px}
+.dotc{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}.dotc.changes{background:var(--fix)}.dotc.approved{background:var(--ok)}
+.vswitch{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);flex:none}
+.vswitch button{border:0;background:none;padding:5px 9px;border-radius:7px;font:600 12px var(--font);color:var(--muted);display:flex;gap:4px;align-items:baseline}
+.vswitch button small{font-size:10px;font-weight:500;opacity:.8}
+.vswitch button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ptag{position:absolute;top:10px;left:10px;z-index:2;padding:4px 9px;border-radius:99px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:#fff;font-size:11.5px;font-weight:600;pointer-events:none}
+.player.old .ptag{background:rgba(249,115,22,.9)}
+.btn.wa{background:#25d366;border-color:#25d366;color:#fff;gap:6px}
+.card.spot{box-shadow:0 0 0 3px var(--accent),0 10px 40px color-mix(in srgb,var(--accent) 30%,transparent);transition:box-shadow .4s}
+.rise{animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
+.btn{transition:transform .12s,background .15s,border-color .15s}.btn:active{transform:scale(.97)}
+.confetti{position:fixed;z-index:200;width:8px;height:12px;border-radius:2px;pointer-events:none;animation:boom 1s cubic-bezier(.2,.6,.4,1) forwards}
+@keyframes boom{to{transform:translate(var(--dx),calc(var(--dy) + 260px)) rotate(var(--rot));opacity:0}}
+@media (prefers-reduced-motion:reduce){.rise,.mnote,.stage>.orb{animation:none}}
+.stage h1{font-size:clamp(38px,4.6vw,62px);line-height:1.02;letter-spacing:-.035em;max-width:13ch}
+.stage h1 span{color:#9db4ff}
+.stage p{color:#b6bcc6;max-width:42ch;margin:14px 0 0}
+.steps{display:flex;gap:22px;flex-wrap:wrap;color:#8b919b;font-size:13px}
+.steps b{color:#f3f4f6}
+.formside{display:grid;place-items:center;padding:32px 20px}
+.form{width:100%;max-width:380px;display:grid;gap:16px}
+.form h2{font-size:32px}
+.link{background:none;border:none;padding:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:13px;justify-self:start}
+@media (max-width:860px){
+  .auth{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .stage{padding:calc(20px + env(safe-area-inset-top,0px)) 20px 26px;gap:22px}
+  .stage h1{font-size:34px}
+  .stage p,.steps{display:none}
+  .formside{place-items:start center;padding:26px 20px calc(30px + env(safe-area-inset-bottom,0px))}
+}
+
+/* ===== shell ===== */
+.app{min-height:100vh;display:grid;grid-template-columns:240px minmax(0,1fr)}
+.app.client{grid-template-columns:minmax(0,1fr)}
+.side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);background:var(--bg2);padding:20px 14px;display:flex;flex-direction:column;gap:22px}
+.app.client .side{display:none}
+.nav{display:grid;gap:2px}
+.nav button{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:9px;border:none;background:none;color:var(--ink2);font-weight:600;font-size:14px;text-align:left}
+.nav button svg{width:18px;height:18px;flex:none}
+.nav button.on{background:var(--panel2);color:var(--ink)}
+.badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--fix);color:#1a0b05;font:700 11px/20px var(--font);text-align:center}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--panel)}
+.me div{min-width:0;flex:1}
+.me b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top{display:none;position:sticky;top:0;z-index:20;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+.app.client .top{display:flex}
+.main{min-width:0;width:100%;max-width:1120px;margin:0 auto;padding:28px 24px 80px}
+.app.client .main{max-width:760px;padding:20px 16px calc(40px + env(safe-area-inset-bottom,0px))}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.head h1{font-size:30px;margin-top:2px}
+.tabs{display:none}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .app:not(.client) .top{display:flex}
+  .main{padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px))}
+  .app:not(.client) .tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:30;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--bg2);border-top:1px solid var(--line);transform:translateZ(0)}
+  .tabs button{display:grid;justify-items:center;gap:2px;border:none;background:none;color:var(--muted);font-size:11px;font-weight:600;padding:6px 0;position:relative}
+  .tabs button svg{width:22px;height:22px}
+  .tabs button.on{color:var(--accent)}
+  .tabs .badge{position:absolute;top:0;left:55%;margin:0}
+  .head h1{font-size:26px}
+}
+
+/* ===== blocks ===== */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.section{margin-bottom:22px}
+.section>h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.section>h2 .count{color:var(--muted);font-weight:500}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:24px}
+.stat{padding:14px 16px}
+.stat .n{font-size:30px;font-weight:650;letter-spacing:-.03em;margin-top:4px}
+.stat.fix .n{color:var(--fix)}.stat.ok .n{color:var(--ok)}.stat.acc .n{color:var(--accent)}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.list{display:grid}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);text-align:left;background:none;border-left:none;border-right:none;border-top:none;width:100%}
+.list>.row:last-child{border-bottom:none}
+button.row:hover{background:var(--panel2)}
+.row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thumb{width:44px;height:44px;border-radius:9px;background:var(--panel2);display:grid;place-items:center;color:var(--muted);flex:none}
+.thumb svg{width:20px;height:20px}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);overflow-x:auto;max-width:100%;margin-bottom:16px}
+.seg button{border:none;background:none;height:34px;padding:0 12px;border-radius:8px;color:var(--muted);font-weight:600;font-size:13px;white-space:nowrap}
+.seg button.on{background:var(--panel2);color:var(--ink)}
+
+/* ===== video card (client + admin detail) ===== */
+.video{overflow:hidden;margin-bottom:16px}
+.player{position:relative;background:#000;display:grid;place-items:center}
+.player video{width:100%;max-height:70vh;display:block;background:#000}
+.player .ext{padding:40px 20px;text-align:center;color:#c4c8cf;display:grid;gap:10px}
+.player .ext a{color:#fff;font-weight:600}
+.vbody{padding:16px;display:grid;gap:14px}
+.vbody h3{font-size:22px}
+.metaline{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.note-from{border-left:3px solid var(--accent);background:var(--bg2);border-radius:0 10px 10px 0;padding:10px 12px}
+.note-from p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.scrub{position:relative;height:26px;cursor:pointer}
+.scrub .rail{position:absolute;left:0;right:0;top:11px;height:4px;border-radius:99px;background:var(--line2)}
+.scrub .fill{position:absolute;left:0;top:11px;height:4px;border-radius:99px;background:var(--ink2);width:0}
+.scrub .mk{position:absolute;top:5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;border:3px solid var(--panel);background:var(--c)}
+.scrub .mk.done{opacity:.35}
+.decide{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.decide .btn{white-space:normal;line-height:1.15;padding:0 10px}
+.timectl{display:flex;align-items:center;gap:6px}
+.timectl .btn{min-height:40px;padding:0 10px}
+.timectl output{font:500 22px var(--mono);min-width:70px;text-align:center}
+body.lock{overflow:hidden}
+.shead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.shead h2{overflow-wrap:anywhere}
+.frame{display:grid;gap:10px;padding:12px;border-radius:14px;background:var(--bg2);border:1px solid var(--line)}
+.frow{display:grid;grid-template-columns:88px minmax(0,1fr);gap:14px;align-items:center}
+.frame video{width:88px;height:88px;display:block;border-radius:8px;background:#000;object-fit:cover;pointer-events:none}
+.sheet:has(.shead) #sheetX{display:none}
+.frame .tc{display:grid;gap:8px;min-width:0}
+.tscrub{display:grid;gap:2px}
+.tscrub input{-webkit-appearance:none;appearance:none;width:100%;height:36px;background:transparent;touch-action:none;margin:0}
+.tscrub input::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:linear-gradient(to right,var(--accent) var(--p,0%),var(--line2) var(--p,0%))}
+.tscrub input::-moz-range-track{height:6px;border-radius:99px;background:var(--line2)}
+.tscrub input::-moz-range-progress{height:6px;border-radius:99px;background:var(--accent)}
+.tscrub input::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-10px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.tscrub input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--accent)}
+.tscrub .ends{display:flex;justify-content:space-between;font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.switch{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.switch input{width:20px;height:20px;accent-color:var(--accent)}
+.sugg{display:flex;gap:6px;flex-wrap:wrap}
+.sugg button{border:1px solid var(--line2);background:var(--bg2);border-radius:99px;padding:7px 12px;font-size:13px;font-weight:600}
+.sugg button:active{background:var(--panel2)}
+body.has-install .main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+input[type=date].input{-webkit-appearance:none;appearance:none;min-width:0;display:flex;align-items:center}
+.banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:10px;font-weight:600}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner.fix{background:var(--fix-soft);color:var(--fix)}
+.notes{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.vgroup{font-size:12px;font-weight:600;color:var(--muted);margin:6px 0 0}
+.note{padding:12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);display:grid;gap:8px}
+.note .top2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.note .time{font:500 12px var(--mono);padding:3px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line2)}
+.note p{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.note.done>p{color:var(--muted)}
+.reply{border-left:2px solid var(--accent);padding:2px 0 2px 10px;font-size:14px;color:var(--ink2)}
+.reply b{color:var(--accent);font-size:12px;display:block}
+.note .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ===== client summary ===== */
+.hello{margin:2px 0 12px}
+.hello .label{font-size:12px;margin-bottom:2px}
+.hello h1{font-size:21px;line-height:1.2;letter-spacing:-.02em}
+.hello p{display:none}
+@media (min-width:700px){.hello h1{font-size:26px}.hello p{display:block}}
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:14px;padding:4px;border-radius:14px;background:var(--bg2);border:1px solid var(--line)}
+.summary button{--c:var(--accent);position:relative;padding:8px 6px;border-radius:10px;border:1px solid transparent;background:transparent;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;overflow:hidden;transition:border-color .15s,background .15s,box-shadow .15s}
+.summary button[data-ctab=changes]{--c:var(--fix)}.summary button[data-ctab=approved]{--c:var(--ok)}
+.summary button::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--c);opacity:0;transition:opacity .15s}
+.summary button.on{background:var(--panel);border-color:var(--line);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.summary button::before{display:none}
+.summary .n{order:2;min-width:20px;padding:1px 6px;border-radius:99px;font-size:12px;line-height:18px;background:color-mix(in srgb,var(--c) 14%,transparent);font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--c)}
+.summary .l{font-size:13px;font-weight:600;color:var(--muted);line-height:1.2;white-space:nowrap}
+.summary button.on .l{color:var(--ink)}
+
+/* ===== sheet ===== */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;opacity:0;transition:opacity .2s}
+.scrim.show{opacity:1}
+.sheet{position:fixed;z-index:61;background:var(--panel);box-shadow:var(--shadow);right:0;top:0;bottom:0;width:min(460px,100%);padding:24px;border-left:1px solid var(--line);transform:translateX(100%);transition:transform .25s ease;overflow:auto;display:grid;align-content:start;gap:16px}
+.sheet.show{transform:none}
+.sheet h2{font-size:24px}
+.sheet .x{position:absolute;right:14px;top:14px}
+@media (max-width:860px){
+  .sheet{top:auto;left:0;width:100%;max-height:92vh;max-height:92dvh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border-left:none;border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:12px 18px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(100%)}
+  .sheet::before{content:"";width:40px;height:5px;border-radius:99px;background:var(--line2);justify-self:center}
+}
+.sheet.half{max-height:min(64dvh,var(--vvh,100dvh));bottom:var(--kb,0px);transition:transform .25s ease,bottom .15s ease}
+.scrim.light{background:linear-gradient(to bottom,transparent 0,transparent 34%,rgba(0,0,0,.35) 60%)}
+.sheet.half .shead h2{font-size:19px}
+.sheet.half .frow{grid-template-columns:64px minmax(0,1fr)}
+.sheet.half .frame video{width:64px;height:64px}
+.sheet.typing .frame,.sheet.typing #sugg,.sheet.typing .switch,.sheet.typing fieldset{display:none}
+.sheet.typing .attime{display:inline-flex}
+.attime{display:none;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.attime b{font:600 12.5px var(--mono);color:var(--ink);padding:2px 7px;border-radius:6px;background:var(--bg2);border:1px solid var(--line)}
+.sentpill{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:3px 10px;border-radius:99px;background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok);font-size:12px;font-weight:700}
+.sendrow{display:grid;grid-template-columns:1fr;gap:8px}
+.sendrow.multi{grid-template-columns:auto 1fr}
+.cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.cats button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 8px;border-radius:12px;border:1px solid var(--line2);background:var(--panel);font-weight:650;font-size:14px;transition:all .15s}
+.cats button:active{transform:scale(.97)}
+.cats button i{width:24px;height:24px;flex:none;border-radius:7px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.cats button i svg{width:14px;height:14px}
+.cats button small{display:none}
+.cats button.on{border-color:var(--c);color:var(--ink);background:color-mix(in srgb,var(--c) 10%,var(--panel));box-shadow:inset 0 0 0 1px var(--c)}
+.cats button.on i{background:var(--c);color:#fff}
+.cathint{font-size:12px;color:var(--muted);margin-top:-2px}
+.timebox{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:10px;background:var(--bg2);border:1px solid var(--line)}
+.timebox input{width:90px;text-align:center;font:500 20px var(--mono);background:transparent;border:none;color:var(--ink)}
+.drop{display:block;border:1.5px dashed var(--line2);border-radius:12px;padding:20px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.has{border-style:solid;color:var(--ink)}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;z-index:80;padding:12px 18px;border-radius:10px;font-weight:600;background:var(--ink);color:var(--bg);box-shadow:var(--shadow);transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:var(--fix);color:#1a0b05}
+@media (max-width:860px){.app:not(.client)~.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+.install{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:45;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--panel2);border:1px solid var(--line2);box-shadow:var(--shadow)}
+.install p{margin:0;flex:1;font-size:13px}
+.steps{display:grid;gap:10px;margin:0;padding:0;list-style:none;counter-reset:st}
+.steps li{display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);font-size:15px;counter-increment:st}
+.steps li::before{content:counter(st);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:700}
+.steps svg{width:20px;height:20px;vertical-align:-4px;color:var(--accent)}
+.pointer{position:fixed;left:50%;bottom:calc(6px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;display:grid;justify-items:center;gap:4px;pointer-events:none;animation:bob 1s ease-in-out infinite}
+.pointer span{background:var(--accent);color:#fff;font-weight:700;font-size:13px;padding:6px 12px;border-radius:99px;box-shadow:var(--shadow)}
+.pointer svg{width:34px;height:34px;color:var(--accent);filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.ptr{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;z-index:90;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line2);box-shadow:var(--shadow);color:var(--muted);opacity:0;transform:translate(-50%,-50px);pointer-events:none;transition:opacity .15s}
+.ptr svg{width:18px;height:18px}.ptr.ready{color:var(--accent)}.ptr.spin svg{animation:spin .7s linear infinite}
+.composer{position:relative}
+.composer textarea{padding-right:58px;min-height:96px}
+.micbtn{position:absolute;right:8px;bottom:8px;width:42px;height:42px;border-radius:50%;border:0;display:grid;place-items:center;background:var(--accent);color:#fff;box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 40%,transparent)}
+.micbtn svg{width:20px;height:20px}.micbtn:active{transform:scale(.92)}
+.rec{padding:8px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.recbtn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:99px;border:1px solid var(--line2);background:var(--panel);font-weight:650;font-size:14px}
+.recbtn svg{width:18px;height:18px;color:#ef4444}
+.recbtn.on{background:#ef4444;border-color:#ef4444;color:#fff}.recbtn.on svg{color:#fff}
+.recbtn.on .dot{width:8px;height:8px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+.rec audio,.note audio{height:40px;max-width:100%;flex:1;min-width:180px}
+.rec .t{font:600 14px var(--mono);color:#ef4444}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bob{50%{transform:translate(-50%,8px)}}
+.install b{display:block;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ SIGN IN ============ -->
+<section class="auth" id="authView" hidden>
+  <div class="stage"><span class="orb o1"></span><span class="orb o2"></span>
+    <div class="logo"><i></i><span>Review Room</span></div>
+    <div>
+      <div class="small" style="color:#8b919b">Client review portal</div>
+      <h1 style="margin-top:10px">Review your videos. <span>Approve in a tap.</span></h1>
+      <p>Watch each video as soon as it&rsquo;s ready, approve it, or point to the exact second you&rsquo;d like changed.</p>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mframe"><div class="mplay"></div><div class="mbar"><i style="left:22%;--c:#60a5fa"></i><i style="left:48%;--c:#c084fc"></i><i style="left:71%;--c:#facc15"></i><b></b></div></div>
+      <div class="mnote n1"><span style="--c:#c084fc"></span><div><b>0:24 · Text</b>Spelling in the title</div></div>
+      <div class="mnote n2"><span style="--c:#22c55e"></span><div><b>Approved</b>Final cut v3</div></div>
+    </div>
+    <div class="steps"><span><b>1</b>&nbsp; Watch</span><span><b>2</b>&nbsp; Approve or request changes</span><span><b>3</b>&nbsp; Receive the final video</span></div>
+  </div>
+  <div class="formside">
+    <form class="form" id="loginForm" novalidate>
+      <div><div class="label">Welcome back</div><h2>Sign in</h2></div>
+      <div class="field"><label for="email">Email</label><input class="input" type="email" id="email" autocomplete="username" inputmode="email"></div>
+      <div class="field"><label for="password">Password</label><input class="input" type="password" id="password" autocomplete="current-password"></div>
+      <button class="btn primary lg" id="loginBtn" type="submit">Sign in</button>
+      <div class="msg" id="loginMsg" role="status"></div>
+      <button class="link" type="button" id="forgotBtn">Forgot your password?</button>
+    </form>
+    <form class="form" id="resetForm" hidden novalidate>
+      <div><div class="label">Account</div><h2>Choose a new password</h2></div>
+      <div class="field"><label for="newPass">New password</label><input class="input" type="password" id="newPass" autocomplete="new-password"></div>
+      <div class="field"><label for="newPass2">Repeat new password</label><input class="input" type="password" id="newPass2" autocomplete="new-password"></div>
+      <button class="btn primary lg" type="submit">Save password</button>
+      <div class="msg" id="resetMsg" role="status"></div>
+    </form>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<div class="app" id="appView" hidden>
+  <aside class="side">
+    <div class="logo"><i></i><span>Review Room</span></div>
+    <nav class="nav" id="sideNav"></nav>
+    <div class="me"><span class="avatar" id="meAv"></span><div><b id="meName"></b><span class="small muted" id="meRole"></span></div>
+      <button class="btn ghost sm" id="outBtn">Sign out</button></div>
+  </aside>
+  <header class="top">
+    <div class="logo"><i></i><span>Review Room</span></div>
+    <button class="avatar" id="topAv" aria-label="Account"></button>
+  </header>
+  <main class="main" id="main"></main>
+  <nav class="tabs" id="tabs"></nav>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden><button class="btn ghost sm x" id="sheetX" aria-label="Close">Close</button><div id="sheetBody" style="display:grid;gap:16px"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="install" id="installBar" hidden>
+  <span class="logo"><i></i></span>
+  <p><b>Get the app</b><span id="installText">Add Review Room to your home screen for one-tap access.</span></p>
+  <button class="btn primary sm" id="installBtn">Install</button>
+  <button class="btn ghost sm" id="installX" aria-label="Dismiss">Not now</button>
+</div>
+
+<script>
+"use strict";
+// ================= config =================
+const ADMIN_EMAIL="charlcedony1999@gmail.com";
+const SUPABASE_URL="https://dgboklhxjwhjhyreicgw.supabase.co";
+const SUPABASE_KEY="sb_publishable_p48r7zHh-k78C8_0X8L5Sw_e5tE9SqS"; // public key; data protected by database rules
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"reviewroom-auth"}});
+const CATS={clip:{label:"Clip",hint:"Cuts, order, timing",ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>',c:"var(--clip)"},text:{label:"Text",hint:"Titles, captions",ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>',c:"var(--text)"},images:{label:"Images",hint:"Pictures, graphics",ic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>',c:"var(--img)"}};
+const CLIENT_STATUS={pending:"Needs your review",changes:"We’re making your changes",approved:"Approved"};
+const ADMIN_STATUS={pending:"Waiting on client",changes:"Changes requested",approved:"Approved"};
+const I={
+ home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+ users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.6c2.6.1 4.6 1.9 5.3 5.4"/></svg>',
+ film:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>'};
+
+// ================= helpers =================
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=t=>{t=Math.max(0,Math.floor(t||0));return Math.floor(t/60)+":"+String(t%60).padStart(2,"0")};
+const parseT=s=>{const p=String(s||"0").split(":").map(Number);return p.length>1?(p[0]||0)*60+(p[1]||0):(p[0]||0)};
+const initials=n=>(n||"?").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+const ago=d=>{const s=(Date.now()-new Date(d))/1e3;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+" min ago";if(s<86400)return Math.floor(s/3600)+" h ago";const n=Math.floor(s/86400);return n+(n===1?" day ago":" days ago")};
+const dateTxt=d=>d?new Date(d+"T00:00:00").toLocaleDateString(undefined,{day:"numeric",month:"short"}):"";
+const dueTxt=d=>{if(!d)return"";const days=Math.round((new Date(d+"T00:00:00")-new Date(new Date().toDateString()))/864e5);
+  return days<0?"Was due "+dateTxt(d):days===0?"Due today":days===1?"Due tomorrow":"Due "+dateTxt(d)};
+function toast(t,bad){const el=$("#toast");el.textContent=t;el.className="toast show"+(bad?" bad":"");clearTimeout(el._t);el._t=setTimeout(()=>el.className="toast",2800)}
+
+// ================= state =================
+let me=null,profiles=[],videos=[],notes=[],versions=[],vsel={},urls={},view="",ctab="review",vfilter="all",openVideo=null,recovering=false,channel=null;
+const isAdmin=()=>me&&me.role==="admin";
+const nameOf=id=>(profiles.find(p=>p.id===id)||{}).name||"Client";
+const openNotes=v=>notes.filter(n=>n.video_id===v.id&&!n.done);
+
+// ================= auth =================
+$("#loginForm").addEventListener("submit",async e=>{e.preventDefault();
+  const email=$("#email").value.trim(),password=$("#password").value,m=$("#loginMsg");m.className="msg";m.textContent="";
+  if(!email||!password){m.textContent="Enter your email and password.";return}
+  const b=$("#loginBtn");b.disabled=true;b.textContent="Signing in…";
+  const {error}=await sb.auth.signInWithPassword({email,password});b.disabled=false;b.textContent="Sign in";
+  if(error){m.textContent=error.message==="Invalid login credentials"?"That email and password don’t match. Try again or reset your password.":error.message;return}
+  boot();});
+$("#forgotBtn").onclick=async()=>{const email=$("#email").value.trim(),m=$("#loginMsg");
+  if(!email){m.className="msg";m.textContent="Type your email above first.";$("#email").focus();return}
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  m.className=error?"msg":"msg good";m.textContent=error?error.message:"We’ve sent a reset link to your email. Check spam too.";};
+sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recovering=true;showAuth(true)}});
+$("#resetForm").addEventListener("submit",async e=>{e.preventDefault();
+  const p1=$("#newPass").value,p2=$("#newPass2").value,m=$("#resetMsg");m.className="msg";
+  if(p1.length<6){m.textContent="Use at least 6 characters.";return} if(p1!==p2){m.textContent="The passwords don’t match.";return}
+  const {error}=await sb.auth.updateUser({password:p1});if(error){m.textContent=error.message;return}
+  recovering=false;history.replaceState(null,"",location.pathname);toast("Password saved");boot();});
+function showAuth(reset){$("#appView").hidden=true;$("#authView").hidden=false;$("#loginForm").hidden=!!reset;$("#resetForm").hidden=!reset}
+async function signOut(){await sb.auth.signOut();location.reload()}
+$("#outBtn").onclick=signOut;
+$("#topAv").onclick=accountSheet;
+
+// ================= data =================
+const aurls={};
+async function load(){
+  const [p,v,c,vv]=await Promise.all([sb.from("profiles").select("*").order("created_at"),
+    sb.from("videos").select("*").order("updated_at",{ascending:false}),sb.from("corrections").select("*").order("created_at"),
+    sb.from("video_versions").select("*").order("version")]);
+  profiles=p.data||[];videos=v.data||[];notes=c.data||[];versions=vv.data||[];
+  const need=notes.map(n=>n.audio_path).filter(x=>x&&!aurls[x]);
+  if(need.length){const {data}=await sb.storage.from("videos").createSignedUrls(need,60*60*12);(data||[]).forEach(d=>{if(d.signedUrl)aurls[d.path]=d.signedUrl})}
+  const soon=Date.now()+30*60*1000;
+  await Promise.all(videos.filter(v=>v.storage_path&&(!urls[v.id]||urls[v.id].path!==v.storage_path||urls[v.id].exp<soon)).map(async v=>{
+    const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,60*60*12);if(data)urls[v.id]={path:v.storage_path,url:data.signedUrl,exp:Date.now()+60*60*12*1000}}));
+}
+function openDeepLink(){
+  let id=new URLSearchParams(location.search).get("watch");
+  try{if(id)sessionStorage.setItem("rr-watch",id);else id=sessionStorage.getItem("rr-watch")}catch(e){}
+  if(!id)return;
+  history.replaceState(null,"",location.pathname);
+  setTimeout(()=>{try{sessionStorage.removeItem("rr-watch")}catch(e){}},5000);
+  const v=videos.find(x=>x.id===id);if(!v){toast("That video isn’t available on this account.",true);return}
+  if(isAdmin()){openVideo=id;render()}else{ctab=v.status==="pending"?"review":v.status;render()}
+  setTimeout(()=>{const el=document.querySelector(`video[data-id="${id}"]`);if(!el)return;
+    const card=el.closest(".card");card&&card.classList.add("spot");setTimeout(()=>card&&card.classList.remove("spot"),2600);
+    el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.play().catch(()=>{el.muted=true;el.play().then(()=>toast("Tap the video to turn on sound")).catch(()=>{})})},250)}
+function shareLink(v){return location.origin+location.pathname+"?watch="+v.id}
+async function boot(){
+  if(recovering||/type=recovery/.test(location.hash))return;
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){showAuth(false);return}
+  const {data:prof}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
+  me=prof||{id:session.user.id,email:session.user.email,role:"client",name:session.user.email.split("@")[0]};
+  if(me.role==="admin"&&String(me.email).toLowerCase()!==ADMIN_EMAIL)me.role="client";
+  $("#authView").hidden=true;$("#appView").hidden=false;$("#appView").classList.toggle("client",!isAdmin());
+  $("#meAv").textContent=$("#topAv").textContent=initials(me.name);$("#meName").textContent=me.name||me.email;$("#meRole").textContent=isAdmin()?"Admin":"Client";
+  view=isAdmin()?"overview":"home";
+  await load();render();openDeepLink();
+  if(!channel)channel=sb.channel("live").on("postgres_changes",{event:"*",schema:"public"},()=>{clearTimeout(boot._t);boot._t=setTimeout(async()=>{await load();render(true)},300)}).subscribe();
+  if(!standalone&&!dismissed&&(deferred||ios)){$("#installBar").hidden=false;document.body.classList.add("has-install")}
+}
+// refresh video links and data when the app comes back to the foreground (home-screen app resumes instead of reloading)
+document.addEventListener("visibilitychange",async()=>{if(document.visibilityState==="visible"&&me){await load();render(true)}});
+
+// ================= render =================
+let pendingRender=false;
+function render(fromLive){
+  if(fromLive&&!$("#sheet").hidden){pendingRender=true;return} // don't disturb someone writing a note
+  if(isAdmin())renderNav();
+  // keep every existing video element (and its position) across refreshes
+  const keep={};document.querySelectorAll("#main video[data-id]").forEach(v=>keep[v.dataset.id]=v);
+  const html=isAdmin()?(openVideo?adminVideoDetail():{overview:adminOverview,videos:adminVideos,clients:adminClients}[view]()):clientHome();
+  $("#main").innerHTML=html;
+  $("#main").querySelectorAll("video[data-id]").forEach(n=>{const old=keep[n.dataset.id];if(old&&old.getAttribute("src")===n.getAttribute("src"))n.replaceWith(old)});
+  wire();
+}
+function renderNav(){
+  const changes=videos.filter(v=>v.status==="changes").length;
+  const items=[["overview","Overview",I.home,changes],["videos","Videos",I.film,0],["clients","Clients",I.users,0],["new","Send video",I.plus,0]];
+  const html=items.map(([k,l,ic,b])=>`<button data-nav="${k}" class="${view===k&&!openVideo?"on":""}">${ic}<span>${l}</span>${b?`<span class="badge">${b}</span>`:""}</button>`).join("");
+  $("#sideNav").innerHTML=html;$("#tabs").innerHTML=html;
+  document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{if(b.dataset.nav==="new"){videoSheet();return}view=b.dataset.nav;openVideo=null;render();scrollTo(0,0)});
+}
+
+// ---------- shared pieces ----------
+const vurls={};
+function versionBar(v){const old=versions.filter(x=>x.video_id===v.id);if(!old.length)return"";const cur=vsel[v.id]||v.version;
+  return `<div class="vswitch" role="tablist" aria-label="Versions">${old.map(x=>`<button role="tab" data-vsel="${v.id}" data-ver="${x.version}" class="${cur===x.version?"on":""}">v${x.version}</button>`).join("")}<button role="tab" data-vsel="${v.id}" data-ver="${v.version}" class="${cur===v.version?"on":""}">v${v.version}<small>latest</small></button></div>`}
+function playerHtml(v){const sel=vsel[v.id];if(sel&&sel!==v.version){const o=versions.find(x=>x.video_id===v.id&&x.version===sel);const ou=o&&vurls[o.id];
+    return `<div class="player old">${ou?`<video data-oldid="${o.id}" controls playsinline preload="metadata" src="${esc(ou)}#t=0.1"></video>`:`<div class="ext"><span class="small">Loading version ${sel}…</span></div>`}<span class="ptag">Older version ${sel}</span></div>`}
+  const u=urls[v.id];const safeLink=/^https:\/\//i.test(v.link||"")?v.link:"";
+  return `<div class="player">${u?`<span class="ptag">v${v.version}${v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
+    :v.storage_path?`<div class="ext"><span class="small">The video couldn’t load.</span><button class="btn sm" onclick="load().then(()=>render())">Try again</button></div>`
+    :safeLink?`<div class="ext"><span class="small">This video opens in a new tab</span><a href="${esc(safeLink)}" target="_blank" rel="noopener">Watch the video</a></div>`
+    :`<div class="ext"><span class="small">No video attached yet.</span></div>`}</div>`}
+function scrubHtml(v,vnotes){if(!urls[v.id]||!vnotes.length)return"";
+  return `<div class="small muted" style="margin-bottom:-8px">Your notes on the timeline · tap a dot to jump there</div><div class="scrub" data-scrub="${v.id}" aria-label="Video timeline with note markers"><div class="rail"></div><div class="fill"></div>${vnotes.map(n=>`<span class="mk ${n.done?"done":""}" data-t="${n.seconds}" style="--c:${CATS[n.type].c}"></span>`).join("")}</div>`}
+function noteHtml(n,admin){
+  return `<li class="note ${n.done?"done":""}">
+    <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button><span class="tag" style="--c:${CATS[n.type].c}">${CATS[n.type].label}</span>
+      <span class="small muted">${ago(n.created_at)}</span>${n.done?`<span class="chip approved" style="height:22px">${(()=>{const vv=videos.find(x=>x.id===n.video_id);return vv&&vv.version>n.version?"Fixed in v"+vv.version:"Done"})()}</span>`:""}</div>
+    ${n.audio_path&&aurls[n.audio_path]?`<audio controls preload="metadata" src="${esc(aurls[n.audio_path])}"></audio>`:""}
+    ${n.note&&n.note!=="Voice note"||!n.audio_path?`<p>${esc(n.note)}</p>`:""}
+    ${n.reply?`<div class="reply"><b>Team reply</b>${esc(n.reply)}</div>`:""}
+    ${admin?`<div class="acts"><button class="btn sm" data-reply="${n.id}">${n.reply?"Edit reply":"Reply"}</button><button class="btn sm ${n.done?"":"ok"}" data-done="${n.id}">${n.done?"Reopen":"Mark done"}</button></div>`:""}
+  </li>`}
+function notesByVersion(v,admin){
+  const vn=notes.filter(n=>n.video_id===v.id);if(!vn.length)return"";
+  const vers=[...new Set(vn.map(n=>n.version))].sort((a,b)=>b-a);
+  return vers.map(ver=>`<div class="vgroup">Notes on version ${ver}</div><ul class="notes">${vn.filter(n=>n.version===ver).map(n=>noteHtml(n,admin)).join("")}</ul>`).join("");
+}
+
+// ================= CLIENT =================
+function clientHome(){
+  const g={review:videos.filter(v=>v.status==="pending"),changes:videos.filter(v=>v.status==="changes"),approved:videos.filter(v=>v.status==="approved")};
+  if(!g[ctab].length){ctab=g.review.length?"review":g.changes.length?"changes":"approved"}
+  const first=((n)=>n?n[0].toUpperCase()+n.slice(1):"there")((me.name||"").split(" ")[0]);
+  const headline=!videos.length?`Welcome, ${esc(first)}`:g.review.length?`${g.review.length} video${g.review.length>1?"s":""} ready for your review`:`You’re all caught up, ${esc(first)}`;
+  const sub=!videos.length?"Your videos will appear here as soon as they’re ready.":g.review.length?"Watch each one, then approve it or request changes.":g.changes.length?"We’re working on the changes you asked for. You’ll see the new version here.":"Every video has been approved. Thank you!";
+  return `<div class="hello"><div class="label">Hi ${esc(first)}</div><h1>${headline}</h1><p class="muted" style="margin:6px 0 0">${sub}</p></div>
+  ${videos.length?`<div class="summary">
+    <button data-ctab="review" class="${ctab==="review"?"on":""}"><span class="n">${g.review.length}</span><span class="l">To review</span></button>
+    <button data-ctab="changes" class="${ctab==="changes"?"on":""}"><span class="n">${g.changes.length}</span><span class="l">In progress</span></button>
+    <button data-ctab="approved" class="${ctab==="approved"?"on":""}"><span class="n">${g.approved.length}</span><span class="l">Approved</span></button></div>`:""}
+  ${g[ctab].map(clientVideo).join("")||(videos.length?`<div class="card empty"><b>Nothing in this list</b>Choose “To review”, “In progress” or “Approved” above.</div>`:`<div class="card empty"><b>No videos yet</b>We’ll have your first video here soon.</div>`)}`;
+}
+function clientVideo(v){
+  const vn=notes.filter(n=>n.video_id===v.id);
+  return `<article class="card video rise">
+   <header class="vhead"><div style="min-width:0"><h3>${esc(v.title)}</h3><div class="vsub"><span class="dotc ${v.status}"></span>${CLIENT_STATUS[v.status]} · Updated ${ago(v.updated_at||v.created_at)}</div></div>${versionBar(v)}</header>
+   ${playerHtml(v)}
+   <div class="vbody">
+    ${v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:""}
+    ${scrubHtml(v,vn)}
+    ${v.status==="pending"?`<div class="decide"><button class="btn ok lg" data-approve="${v.id}">Approve</button><button class="btn fix lg" data-change="${v.id}">Request changes</button></div>
+      <div class="small muted">Tip: pause where you want a change, tap Request changes. You can add several notes in one go.</div>`
+    :v.status==="changes"?`<div class="banner fix">We received your notes and are working on them.</div><button class="btn sm" data-change="${v.id}" style="justify-self:start">Add another note</button>`
+    :`<div class="banner ok">You approved this video.<button class="btn ghost sm" data-undo="${v.id}" style="margin-left:auto">Undo approval</button></div>`}
+    ${notesByVersion(v,false)}
+   </div></article>`;
+}
+function changeSheet(v,vid){
+  let cat="clip";
+  const SUGG={clip:["Remove this part","Make this part shorter","Move this part earlier","Cut ends too early"],
+    text:["Spelling mistake","Change the wording","Text is too small","Text appears too fast"],
+    images:["Use a different picture","Picture is blurry","Remove this graphic","Add our logo"]};
+  openSheet(`<div class="shead"><div><div class="label">Request changes</div><h2>${esc(v.title)}</h2><span class="sentpill" id="sCount" hidden></span></div><button type="button" class="btn sm" id="sClose">Close</button></div>
+   <fieldset style="border:0;padding:0;margin:0;display:grid;gap:8px"><legend class="field" style="font-size:13px;font-weight:600;color:var(--ink2);padding:0;margin-bottom:8px">What should change?</legend>
+     <div class="cats" id="cats">${Object.entries(CATS).map(([k,c],i)=>`<button type="button" data-k="${k}" class="${i?"":"on"}" aria-pressed="${!i}" style="--c:${c.c}"><i>${c.ic}</i>${c.label}<small>${c.hint}</small></button>`).join("")}</div><div class="cathint" id="catHint">${CATS.clip.hint}</div></fieldset>
+   ${vid?`<div class="frame" id="frameBox"><div class="frow"><video id="sFrame" muted playsinline preload="auto" aria-hidden="true" src="${esc((vid.currentSrc||vid.src).split("#")[0])}#t=${Math.floor(vid.currentTime)}"></video>
+     <div class="tc"><span class="small muted">Moment in the video <span style="opacity:.7">· drag the bar</span></span>
+       <span class="timectl"><button type="button" class="btn" id="tMinus" aria-label="1 second earlier">&minus;1s</button><output id="sTime" aria-live="polite">${fmt(vid.currentTime)}</output><button type="button" class="btn" id="tPlus" aria-label="1 second later">+1s</button></span></div></div>
+       <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,Math.floor(vid.duration||0))}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"><div class="ends"><span>0:00</span><span>${fmt(vid.duration||0)}</span></div></div></div>`:""}
+   <label class="switch"><input type="checkbox" id="sWhole"> About the whole video, not one moment</label>
+   <div class="field"><label for="sNote" style="display:flex;justify-content:space-between;align-items:center">Describe the change <span class="attime" id="atTime">at <b id="atT"></b></span></label>
+     <div class="sugg" id="sugg"></div>
+     <div class="composer"><textarea class="input" id="sNote" placeholder="Type your note, or tap the mic to talk"></textarea>${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="micbtn" id="recBtn" aria-label="Record a voice note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>`:""}</div>
+     <div class="rec" id="recBox" hidden></div></div>
+   <div class="sendrow" id="sendRow"><button class="btn lg" id="sDone" hidden>Done</button><button class="btn primary lg" id="sSend">Send note</button></div><div class="msg" id="sMsg"></div>`,
+  ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=vid&&vid.duration?Math.floor(vid.duration):99999;
+    const fr=$("#sFrame");const show=()=>{if(fr&&fr.readyState>=1){try{fr.currentTime=secs+0.05}catch(e){}}};if(fr){fr.addEventListener("loadedmetadata",()=>{const pr=fr.play();(pr&&pr.then?pr:Promise.resolve()).then(()=>{fr.pause();show()}).catch(show)},{once:true});fr.load()}
+    const setT=s=>{secs=Math.max(0,Math.min(max,s));$("#sTime").textContent=fmt(secs);$("#atT").textContent=fmt(secs);const rg=$("#sRange");if(rg){rg.value=secs;rg.style.setProperty("--p",(secs/(+rg.max||1)*100)+"%")}if(vid)vid.currentTime=secs;show()};
+    if(vid){$("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);setT(secs)}
+    const fillSugg=()=>{$("#sugg").innerHTML=SUGG[cat].map(t=>`<button type="button">${esc(t)}</button>`).join("")};fillSugg();
+    $("#sugg").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ta=$("#sNote");ta.value=ta.value.trim()?ta.value.trim()+". "+b.textContent:b.textContent;ta.focus()};
+    $("#atT").textContent=vid?fmt(secs):"Whole video";
+    $("#sWhole").onchange=()=>{const fb=$("#frameBox");if(fb)fb.hidden=$("#sWhole").checked;$("#atT").textContent=$("#sWhole").checked||!vid?"Whole video":fmt(secs)};
+    // typing mode: tuck away the picker so the text box and Send stay visible above the keyboard
+    const sh=$("#sheet"),ta0=$("#sNote");
+    ta0.addEventListener("focus",()=>{sh.classList.add("typing");setTimeout(()=>ta0.scrollIntoView({block:"nearest"}),60)});
+    ta0.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==ta0&&!sh.contains(document.activeElement)||document.activeElement===document.body)sh.classList.remove("typing")},150));
+    $("#sClose").onclick=()=>{closeSheet();if(sent)toast(`Thanks! We got your ${sent} note${sent>1?"s":""}.`)};
+    $("#sDone").onclick=()=>{closeSheet();toast(`Thanks! We got your ${sent} note${sent>1?"s":""}.`)};
+    $("#cats").onclick=e=>{const b=e.target.closest("button");if(!b)return;cat=b.dataset.k;$("#cats").querySelectorAll("button").forEach(x=>{x.classList.toggle("on",x===b);x.setAttribute("aria-pressed",x===b)});$("#catHint").textContent=CATS[cat].hint;fillSugg()};
+    let blob=null,mr=null,stream=null,tick=null;
+    const recBox=$("#recBox");
+    const idle=()=>{recBox.hidden=true;recBox.innerHTML="";$("#recBtn").hidden=false};
+    const stopAll=()=>{clearInterval(tick);if(mr&&mr.state!=="inactive")mr.stop();if(stream)stream.getTracks().forEach(t=>t.stop())};
+    async function start(){try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){$("#sMsg").textContent="Microphone access was blocked. Allow it in your browser settings to record.";return}
+      const type=["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||"";
+      mr=new MediaRecorder(stream,type?{mimeType:type}:undefined);const parts=[];mr.ondataavailable=e=>{if(e.data.size)parts.push(e.data)};
+      mr.onstop=()=>{stream.getTracks().forEach(t=>t.stop());blob=new Blob(parts,{type:mr.mimeType||type||"audio/mp4"});
+        recBox.hidden=false;recBox.innerHTML=`<audio controls src="${URL.createObjectURL(blob)}"></audio><button type="button" class="btn sm" id="recDel">Delete</button>`;
+        $("#recDel").onclick=()=>{blob=null;idle()}};
+      mr.start();const t0=Date.now();
+      $("#recBtn").hidden=true;recBox.hidden=false;recBox.innerHTML=`<button type="button" class="recbtn on" id="recStop"><span class="dot"></span><span>Stop recording</span></button><span class="t" id="recT">0:00</span>`;
+      $("#recStop").onclick=()=>{clearInterval(tick);mr.stop()};
+      tick=setInterval(()=>{const s=(Date.now()-t0)/1000;$("#recT").textContent=fmt(s);if(s>=180){clearInterval(tick);mr.stop()}},250)}
+    if($("#recBtn")){$("#recBtn").onclick=start;sheetCleanup=stopAll}
+    $("#sSend").onclick=async()=>{if(mr&&mr.state==="recording"){$("#sMsg").textContent="Stop the recording first.";return}
+      let note=$("#sNote").value.trim();if(!note&&!blob){$("#sMsg").textContent="Please describe the change or record a voice note.";$("#sNote").focus();return}
+      if(!note)note="Voice note";
+      const whole=$("#sWhole").checked||!vid;if(whole)secs=0;
+      const time=whole?"Whole video":fmt(secs),b=$("#sSend");b.disabled=true;b.textContent="Sending…";
+      let audio_path=null;
+      if(blob){const ext=/webm/.test(blob.type)?"webm":"m4a";audio_path=`${me.id}/audio/${crypto.randomUUID()}.${ext}`;
+        const up=await sb.storage.from("videos").upload(audio_path,blob,{contentType:blob.type});
+        if(up.error){b.disabled=false;b.textContent="Send note";$("#sMsg").textContent="Couldn’t upload the voice note. Try again.";return}}
+      let {error}=await sb.from("corrections").insert({video_id:v.id,type:cat,time_label:time,seconds:secs,note,version:v.version,audio_path});
+      if(!error)({error}=await sb.rpc("set_video_status",{vid:v.id,new_status:"changes"}));
+      if(error){b.disabled=false;b.textContent="Send note";$("#sMsg").textContent="Couldn’t send. Check your connection and try again.";return}
+      sent++;ctab="changes";
+      $("#sCount").hidden=false;$("#sCount").textContent=`✓ ${sent} note${sent>1?"s":""} sent`;
+      $("#sNote").value="";blob=null;idle();$("#sWhole").checked=false;const fb=$("#frameBox");if(fb)fb.hidden=false;
+      $("#sheet").classList.remove("typing");document.activeElement&&document.activeElement.blur&&document.activeElement.blur();
+      b.disabled=false;b.textContent="Send another note";$("#sDone").hidden=false;$("#sendRow").classList.add("multi");$("#sClose").textContent="Done";
+      $("#sMsg").textContent="";toast("Sent. Move to the next moment to add another.");
+      $("#sheetBody").scrollTo({top:0,behavior:"smooth"});$("#sheet").scrollTo({top:0,behavior:"smooth"});
+      load().then(()=>render(true))}});
+}
+function accountSheet(){
+  openSheet(`<div><div class="label">Account</div><h2>${esc(me.name||"You")}</h2><p class="muted" style="margin:4px 0 0">${esc(me.email)}</p></div>
+   <div class="card" style="padding:14px"><b>Use it like an app</b><p class="small muted" style="margin:6px 0 0">iPhone: open this site in Safari, tap Share, then “Add to Home Screen”.<br>Android: tap “Install”, or the browser menu → “Install app”.<br>You’ll stay signed in on this device.</p></div>
+   <button class="btn lg block" id="sOut">Sign out</button>`,()=>{$("#sOut").onclick=signOut});
+}
+
+// ================= ADMIN =================
+function adminOverview(){
+  const needs=videos.filter(v=>v.status==="changes"),waiting=videos.filter(v=>v.status==="pending"),appr=videos.filter(v=>v.status==="approved");
+  const openCount=notes.filter(n=>!n.done).length;
+  const h=new Date().getHours(),greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
+  return `<div class="head"><div><div class="label">${new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</div><h1>${greet}</h1></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-addclient>Add client</button><button class="btn primary" data-newvideo>Send video for review</button></div></div>
+  <div class="stats"><div class="card stat fix"><div class="label">Needs your action</div><div class="n">${needs.length}</div></div>
+   <div class="card stat acc"><div class="label">Waiting on client</div><div class="n">${waiting.length}</div></div>
+   <div class="card stat ok"><div class="label">Approved</div><div class="n">${appr.length}</div></div>
+   <div class="card stat"><div class="label">Open notes</div><div class="n">${openCount}</div></div></div>
+  <div class="section"><h2>Needs your action <span class="count">${needs.length}</span></h2>${listCard(needs,"Nothing to fix right now.")}</div>
+  <div class="section"><h2>Waiting on client <span class="count">${waiting.length}</span></h2>${listCard(waiting,"No videos waiting for review.")}</div>
+  <div class="section"><h2>Recently approved <span class="count">${appr.length}</span></h2>${listCard(appr.slice(0,5),"No approvals yet.")}</div>`;
+}
+function listCard(list,emptyTxt){
+  if(!list.length)return `<div class="card empty">${emptyTxt}</div>`;
+  return `<div class="card list">${list.map(v=>{const o=openNotes(v).length;
+    return `<button class="row" data-open="${v.id}"><span class="thumb">${I.film}</span>
+      <span style="min-width:0"><span class="t" style="display:block">${esc(v.title)}</span><span class="s" style="display:block">${esc(nameOf(v.client_id))} · v${v.version} · updated ${ago(v.updated_at)}${v.due_date&&v.status==="pending"?" · "+dueTxt(v.due_date):""}</span></span>
+      <span style="display:flex;gap:6px;align-items:center">${o?`<span class="chip changes">${o} note${o>1?"s":""}</span>`:`<span class="chip ${v.status}">${ADMIN_STATUS[v.status]}</span>`}</span></button>`}).join("")}</div>`;
+}
+function adminVideos(){
+  const cnt=s=>videos.filter(v=>v.status===s).length,list=videos.filter(v=>vfilter==="all"||v.status===vfilter);
+  return `<div class="head"><div><div class="label">Library</div><h1>Videos</h1></div><button class="btn primary" data-newvideo>Send video for review</button></div>
+   <div class="seg">${[["all","All",videos.length],["changes","Changes requested",cnt("changes")],["pending","Waiting on client",cnt("pending")],["approved","Approved",cnt("approved")]].map(([k,l,c])=>`<button data-vf="${k}" class="${vfilter===k?"on":""}">${l} · ${c}</button>`).join("")}</div>
+   ${listCard(list,"No videos here.")}`;
+}
+function adminVideoDetail(){
+  const v=videos.find(x=>x.id===openVideo);if(!v){openVideo=null;return adminOverview()}
+  const vn=notes.filter(n=>n.video_id===v.id),o=openNotes(v).length;
+  return `<button class="btn ghost sm" data-back style="margin-bottom:12px">← Back</button>
+  <article class="card video">${versions.some(x=>x.video_id===v.id)?`<header class="vhead"><span class="small muted">Compare versions</span>${versionBar(v)}</header>`:""}${playerHtml(v)}
+   <div class="vbody">
+    <div class="metaline"><span class="chip ${v.status}">${ADMIN_STATUS[v.status]}</span><span class="chip plain">Version ${v.version}</span><span>${esc(nameOf(v.client_id))}</span>${v.due_date?`<span>· ${dueTxt(v.due_date)}</span>`:""}</div>
+    <h3>${esc(v.title)}</h3>
+    ${v.message?`<div class="note-from"><div class="label">Your message to the client</div><p>${esc(v.message)}</p></div>`:""}
+    ${scrubHtml(v,vn)}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ${v.status==="changes"?"primary":""}" data-newversion="${v.id}">Upload new version</button>
+      <button class="btn wa" data-wa="${v.id}"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.3z"/></svg>Share on WhatsApp</button>
+      <button class="btn" data-copylink="${v.id}">Copy link</button>
+      <button class="btn" data-edit="${v.id}">Edit details</button>
+      <button class="btn ghost" data-remove="${v.id}">Delete</button></div>
+    ${v.status==="changes"&&!o?`<div class="banner ok">All notes are done. Upload the new version to send it back.</div>`:""}
+    ${vn.length?notesByVersion(v,true):`<div class="small muted">No notes from the client yet.</div>`}
+   </div></article>`;
+}
+function adminClients(){
+  const cl=profiles.filter(p=>p.role==="client");
+  return `<div class="head"><div><div class="label">People</div><h1>Clients</h1></div><button class="btn primary" data-addclient>Add client</button></div>
+  ${cl.length?`<div class="card list">${cl.map(c=>{const vs=videos.filter(v=>v.client_id===c.id),a=vs.filter(v=>v.status==="approved").length,ch=vs.filter(v=>v.status==="changes").length,w=vs.filter(v=>v.status==="pending").length;
+   return `<div class="row"><span class="avatar">${initials(c.name)}</span><span style="min-width:0"><span class="t" style="display:block">${esc(c.name)}</span><span class="s" style="display:block">${esc(c.email)}</span></span>
+     <span class="small" style="text-align:right">${vs.length} video${vs.length===1?"":"s"}<br><span style="color:var(--ok)">${a} approved</span>${ch?` · <span style="color:var(--fix)">${ch} changes</span>`:""}${w?` · <span style="color:var(--accent)">${w} waiting</span>`:""}</span></div>`}).join("")}</div>`
+   :`<div class="card empty"><b>No clients yet</b>Create a login for your first client.</div>`}`;
+}
+
+// ---------- admin forms ----------
+function clientSheet(){
+  openSheet(`<div><div class="label">New client</div><h2>Create a client login</h2></div>
+   <div class="field"><label for="cName">Client name</label><input class="input" id="cName" autocomplete="off" placeholder="e.g. Sharon Jose"></div>
+   <div class="field"><label for="cEmail">Email (used to sign in)</label><input class="input" id="cEmail" type="email" autocomplete="off" inputmode="email"></div>
+   <div class="field"><label for="cPass">Password for them</label><input class="input" id="cPass" type="text" autocomplete="off" placeholder="At least 6 characters"></div>
+   <button class="btn primary lg" id="cGo">Create login</button><div class="msg" id="cMsg"></div>
+   <p class="small muted" style="margin:0">Then send them ${esc(location.origin)} with their email and password. They can change it with “Forgot your password?”.</p>`,
+  ()=>{$("#cGo").onclick=async()=>{const name=$("#cName").value.trim(),email=$("#cEmail").value.trim(),password=$("#cPass").value,m=$("#cMsg");m.className="msg";
+    if(!name||!email||password.length<6){m.textContent="Fill in the name, email and a password of 6+ characters.";return}
+    $("#cGo").disabled=true;const tmp=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:"rr-tmp"}});
+    const {error}=await tmp.auth.signUp({email,password,options:{data:{name}}});$("#cGo").disabled=false;
+    if(error){m.textContent=error.message;return}closeSheet();await load();render();toast("Login created for "+name)}});
+}
+function videoForm(v,mode){ // mode: new | version | edit
+  const cl=profiles.filter(p=>p.role==="client");
+  const title={new:"Send a video for review",version:"Upload version "+((v?v.version:0)+1),edit:"Edit details"}[mode];
+  return `<div><div class="label">${mode==="new"?"New review":esc(v.title)}</div><h2>${title}</h2></div>
+   ${mode==="new"?`<div class="field"><label for="fClient">Client</label><select class="input" id="fClient">${cl.map(c=>`<option value="${c.id}">${esc(c.name)} · ${esc(c.email)}</option>`).join("")}</select></div>
+   <div class="field"><label for="fTitle">Title</label><input class="input" id="fTitle" placeholder="e.g. Short 1 – The leper healed"></div>`:""}
+   ${mode==="edit"?`<div class="field"><label for="fTitle">Title</label><input class="input" id="fTitle" value="${esc(v.title)}"></div>`:""}
+   ${mode!=="edit"?`<label class="drop" id="fDrop"><input type="file" id="fFile" accept="video/*" hidden><b style="color:var(--ink)">Choose the video file</b><br><span class="small">MP4 or MOV, up to 50 MB</span></label>
+   <div class="field"><label for="fLink">Or paste a link instead (Google Drive, YouTube unlisted)</label><input class="input" id="fLink" type="url" placeholder="https://"></div>`:""}
+   <div class="field"><label for="fMsg">Message to the client <span class="muted">(optional)</span></label><textarea class="input" id="fMsg" placeholder="${mode==="version"?"e.g. We trimmed the intro and fixed the title spelling.":"e.g. Here’s the first cut. Please check the captions and music."}">${mode==="edit"?esc(v.message||""):""}</textarea></div>
+   <div class="field"><label for="fDue">Review by <span class="muted">(optional)</span></label><input class="input" id="fDue" type="date" value="${mode!=="new"&&v.due_date?v.due_date:""}"></div>
+   <div class="bar" id="fBar" hidden><i></i></div>
+   <button class="btn primary lg" id="fGo">${mode==="edit"?"Save":"Send to client"}</button><div class="msg" id="fMsgOut"></div>`;
+}
+function videoSheet(){
+  if(!profiles.some(p=>p.role==="client")){clientSheet();toast("Add a client first",true);return}
+  openSheet(videoForm(null,"new"),()=>wireVideoForm(null,"new"));
+}
+function wireVideoForm(v,mode){
+  const f=$("#fFile");
+  if(f)f.onchange=()=>{const file=f.files[0];if(!file)return;$("#fDrop").classList.add("has");
+    $("#fDrop").querySelector("b").textContent=file.name;$("#fDrop").querySelector("span").textContent=(file.size/1048576).toFixed(1)+" MB · tap to change";
+    const t=$("#fTitle");if(t&&!t.value)t.value=file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ")};
+  $("#fGo").onclick=async()=>{
+    const m=$("#fMsgOut");m.className="msg";const b=$("#fGo");
+    const title=$("#fTitle")?$("#fTitle").value.trim():"",file=f?f.files[0]:null,link=$("#fLink")?$("#fLink").value.trim():"",message=$("#fMsg").value.trim()||null,due_date=$("#fDue").value||null;
+    if(mode!=="version"&&!title){m.textContent="Add a title.";return}
+    if(mode!=="edit"&&!file&&!link){m.textContent="Choose a video file or paste a link.";return}
+    if(file&&file.size>50*1048576){m.textContent="That file is over 50 MB. Paste a share link instead.";return}
+    b.disabled=true;
+    try{
+      if(mode==="edit"){const {error}=await sb.from("videos").update({title,message,due_date}).eq("id",v.id);if(error)throw error;closeSheet();await load();render();toast("Saved");return}
+      const client_id=mode==="new"?$("#fClient").value:v.client_id;
+      let storage_path=null;
+      if(file){$("#fBar").hidden=false;b.textContent="Uploading…";storage_path=`${client_id}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
+        await uploadWithProgress(storage_path,file,p=>$("#fBar i").style.width=p+"%")}
+      const now=new Date().toISOString();
+      const row=mode==="new"?{client_id,title,storage_path,link:file?null:link,message,due_date,version:1,status:"pending",updated_at:now}
+        :{storage_path,link:file?null:link,message,due_date,version:v.version+1,status:"pending",updated_at:now};
+      const {error}=mode==="new"?await sb.from("videos").insert(row):await sb.from("videos").update(row).eq("id",v.id);
+      if(error){if(storage_path)await sb.storage.from("videos").remove([storage_path]);throw error}
+      if(mode==="version"&&(v.storage_path||v.link))await sb.from("video_versions").insert({video_id:v.id,version:v.version,storage_path:v.storage_path,link:v.link});
+      if(mode==="version")delete vsel[v.id];
+      closeSheet();await load();render();toast(mode==="new"?"Sent. Your client can watch it now.":"Version "+(v.version+1)+" sent to the client.");
+    }catch(err){m.textContent="Something went wrong: "+(err.message||err);b.disabled=false;b.textContent=mode==="edit"?"Save":"Send to client"}
+  };
+}
+async function uploadWithProgress(path,file,onp){
+  const {data:{session}}=await sb.auth.getSession();
+  await new Promise((res,rej)=>{const x=new XMLHttpRequest();x.open("POST",`${SUPABASE_URL}/storage/v1/object/videos/${path.split("/").map(encodeURIComponent).join("/")}`);
+    x.setRequestHeader("Authorization","Bearer "+session.access_token);x.setRequestHeader("apikey",SUPABASE_KEY);x.setRequestHeader("Content-Type",file.type||"video/mp4");
+    x.upload.onprogress=e=>{if(e.lengthComputable)onp(Math.round(e.loaded/e.total*100))};
+    x.onload=()=>x.status<300?res():rej(new Error((()=>{try{return JSON.parse(x.responseText).message}catch(e){return"Upload failed ("+x.status+")"}})()));
+    x.onerror=()=>rej(new Error("Network error"));x.send(file)});
+}
+function replySheet(n){
+  openSheet(`<div><div class="label">Reply to note at ${esc(n.time_label)}</div><h2>${esc(n.note.slice(0,80))}${n.note.length>80?"…":""}</h2></div>
+   <div class="field"><label for="rTxt">Your reply (the client sees this)</label><textarea class="input" id="rTxt" placeholder="e.g. Done in version 2">${esc(n.reply||"")}</textarea></div>
+   <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="rDone" ${n.done?"":"checked"} style="width:20px;height:20px"> Mark this note as done</label>
+   <button class="btn primary lg" id="rGo">Save reply</button><div class="msg" id="rMsg"></div>`,
+  ()=>{$("#rGo").onclick=async()=>{const {error}=await sb.from("corrections").update({reply:$("#rTxt").value.trim()||null,done:$("#rDone").checked}).eq("id",n.id);
+    if(error){$("#rMsg").textContent=error.message;return}closeSheet();await load();render();toast("Reply saved")}});
+}
+
+// ================= events =================
+function wire(){
+  const main=$("#main");
+  main.querySelectorAll("video[data-id]").forEach(vid=>{const sc=main.querySelector(`[data-scrub="${vid.dataset.id}"]`);if(!sc)return;
+    const upd=()=>{const d=vid.duration||0;sc.querySelector(".fill").style.width=(d?vid.currentTime/d*100:0)+"%";sc.querySelectorAll(".mk").forEach(m=>m.style.left=(d?Math.min(100,+m.dataset.t/d*100):0)+"%")};
+    vid.addEventListener("loadedmetadata",upd);vid.addEventListener("timeupdate",upd);upd();
+    sc.onclick=e=>{const d=vid.duration||0;if(!d)return;const mk=e.target.closest(".mk");const r=sc.getBoundingClientRect();vid.currentTime=mk?+mk.dataset.t:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*d}});
+  const on=(sel,fn)=>main.querySelectorAll(sel).forEach(b=>b.onclick=()=>fn(b));
+  on("[data-jump]",b=>{const v=main.querySelector(`video[data-id="${b.dataset.jump}"]`);if(v){v.currentTime=+b.dataset.t;v.scrollIntoView({behavior:"smooth",block:"center"});v.play().catch(()=>{})}});
+  on("[data-wa]",b=>{const v=videos.find(x=>x.id===b.dataset.wa);const c=profiles.find(x=>x.id===v.client_id);
+    const first=((c&&c.name)||"").split(" ")[0];
+    const txt=`Hi${first?" "+first:""}! ${v.version>1?"Version "+v.version+" of":"Your video"} “${v.title}” is ready for review 🎬\n\nTap to watch and approve:\n${shareLink(v)}`;
+    const enc=encodeURIComponent(txt);
+    if(/android|iphone|ipad|ipod/i.test(navigator.userAgent)){location.href="whatsapp://send?text="+enc;setTimeout(()=>{if(!document.hidden)window.open("https://wa.me/?text="+enc,"_blank","noopener")},1200);return}
+    openSheet(`<div class="shead"><div><div class="label">Share on WhatsApp</div><h2>${esc(v.title)}</h2></div><button type="button" class="btn sm" id="wX">Close</button></div>
+      <div class="note-from"><p>${esc(txt)}</p></div>
+      <button class="btn wa lg" id="wApp">Open WhatsApp app</button>
+      <button class="btn lg" id="wCopy">Copy message</button>
+      <button class="btn ghost" id="wWeb">Open WhatsApp Web instead</button>
+      <p class="small muted" style="margin:0">If WhatsApp Web asks you to update Chrome, use the WhatsApp app for Windows or copy the message and paste it into any chat.</p>`,
+      ()=>{$("#wX").onclick=closeSheet;
+        $("#wApp").onclick=()=>{location.href="whatsapp://send?text="+enc};
+        $("#wWeb").onclick=()=>window.open("https://web.whatsapp.com/send?text="+enc,"_blank","noopener");
+        $("#wCopy").onclick=async()=>{try{await navigator.clipboard.writeText(txt);toast("Message copied. Paste it in WhatsApp.")}catch(e){prompt("Copy this message:",txt)}}})});
+  on("[data-copylink]",async b=>{const v=videos.find(x=>x.id===b.dataset.copylink);try{await navigator.clipboard.writeText(shareLink(v));toast("Link copied")}catch(e){prompt("Copy this link:",shareLink(v))}});
+  on("[data-approve]",b=>{celebrate(b);setStatus(b.dataset.approve,"approved","Approved. Thank you!")});
+  on("[data-vsel]",async b=>{const id=b.dataset.vsel,ver=+b.dataset.ver,v=videos.find(x=>x.id===id);vsel[id]=ver;
+    const o=versions.find(x=>x.video_id===id&&x.version===ver);
+    if(o&&ver!==v.version&&!vurls[o.id]){render();if(o.storage_path){const {data}=await sb.storage.from("videos").createSignedUrl(o.storage_path,60*60*6);if(data)vurls[o.id]=data.signedUrl}else if(o.link&&/^https:/i.test(o.link)){window.open(o.link,"_blank","noopener")}}
+    render()});
+  on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
+  on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
+    $("#sheet").classList.add("half");$("#scrim").classList.add("light");changeSheet(v,vid)});
+  on("[data-ctab]",b=>{ctab=b.dataset.ctab;render()});
+  on("[data-vf]",b=>{vfilter=b.dataset.vf;render()});
+  on("[data-open]",b=>{openVideo=b.dataset.open;render();scrollTo(0,0)});
+  on("[data-back]",()=>{openVideo=null;render()});
+  on("[data-addclient]",clientSheet);
+  on("[data-newvideo]",videoSheet);
+  on("[data-newversion]",b=>{const v=videos.find(x=>x.id===b.dataset.newversion);openSheet(videoForm(v,"version"),()=>wireVideoForm(v,"version"))});
+  on("[data-edit]",b=>{const v=videos.find(x=>x.id===b.dataset.edit);openSheet(videoForm(v,"edit"),()=>wireVideoForm(v,"edit"))});
+  on("[data-reply]",b=>replySheet(notes.find(n=>n.id===b.dataset.reply)));
+  on("[data-done]",async b=>{const n=notes.find(x=>x.id===b.dataset.done);const {error}=await sb.from("corrections").update({done:!n.done}).eq("id",n.id);
+    if(error)return toast("Couldn’t save. Try again.",true);await load();render();toast(n.done?"Reopened":"Marked as done")});
+  on("[data-remove]",async b=>{if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Tap again to delete";setTimeout(()=>{b.dataset.c="";b.textContent="Delete"},3500);return}
+    const v=videos.find(x=>x.id===b.dataset.remove);const {error}=await sb.from("videos").delete().eq("id",v.id);
+    if(error)return toast("Couldn’t delete: "+error.message,true);
+    const paths=[v.storage_path,...versions.filter(x=>x.video_id===v.id).map(x=>x.storage_path)].filter(Boolean);
+    if(paths.length)await sb.storage.from("videos").remove(paths);openVideo=null;await load();render();toast("Video deleted")});
+}
+function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
+  const rc=el.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,cols=["#22c55e","#3b6cff","#facc15","#f97316","#c084fc"];
+  for(let i=0;i<28;i++){const d=document.createElement("i");d.className="confetti";const a=Math.random()*Math.PI*2,sp=80+Math.random()*140;
+    d.style.cssText=`left:${cx}px;top:${cy}px;background:${cols[i%5]};--dx:${Math.cos(a)*sp}px;--dy:${Math.sin(a)*sp-120}px;--rot:${Math.random()*720}deg`;
+    document.body.appendChild(d);setTimeout(()=>d.remove(),1100)}}
+async function setStatus(id,s,msg){const {error}=await sb.rpc("set_video_status",{vid:id,new_status:s});if(error)return toast("Couldn’t save. Check your connection.",true);
+  if(!isAdmin())ctab=s==="approved"?"approved":"review";await load();render();toast(msg)}
+
+// ================= sheet =================
+let lastFocus=null;
+function openSheet(html,after){lastFocus=document.activeElement;$("#sheetBody").innerHTML=html;$("#scrim").hidden=false;$("#sheet").hidden=false;document.body.classList.add("lock");
+  requestAnimationFrame(()=>{$("#scrim").classList.add("show");$("#sheet").classList.add("show")});after&&after();
+  const first=$("#sheetBody").querySelector("input,textarea,select,button");if(first&&!first.matches("textarea"))setTimeout(()=>first.focus({preventScroll:true}),260);
+  $("#sheetBody").querySelectorAll("input,textarea").forEach(el=>el.addEventListener("focus",()=>setTimeout(()=>el.scrollIntoView({block:"center",behavior:"smooth"}),300)))}
+let sheetCleanup=null;
+if(window.visualViewport){const vv=visualViewport;const fit=()=>{const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty("--kb",kb+"px");document.documentElement.style.setProperty("--vvh",(vv.height-12)+"px")};vv.addEventListener("resize",fit);vv.addEventListener("scroll",fit);fit()}
+function closeSheet(){setTimeout(()=>{$("#sheet").classList.remove("half","typing");$("#scrim").classList.remove("light")},260);if(sheetCleanup){try{sheetCleanup()}catch(e){}sheetCleanup=null}$("#scrim").classList.remove("show");$("#sheet").classList.remove("show");document.body.classList.remove("lock");
+  setTimeout(()=>{$("#scrim").hidden=true;$("#sheet").hidden=true;if(pendingRender){pendingRender=false;render()}if(lastFocus&&lastFocus.focus)lastFocus.focus({preventScroll:true})},250)}
+$("#scrim").onclick=closeSheet;$("#sheetX").onclick=closeSheet;document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
+
+// ================= install as app =================
+if("serviceWorker" in navigator){const hadCtl=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(reg=>{const up=()=>reg.update().catch(()=>{});document.addEventListener("visibilitychange",()=>{if(!document.hidden)up()});setInterval(up,30*60*1000)}).catch(()=>{});
+  let reloading=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!hadCtl||reloading)return;reloading=true;if(document.body.classList.contains("lock"))return;location.reload()})}
+// pull down to refresh (iPhone home-screen apps have no reload button)
+(()=>{let y0=null,dy=0;const ind=document.createElement("div");ind.className="ptr";ind.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>';document.body.appendChild(ind);
+  addEventListener("touchstart",e=>{y0=(scrollY<=0&&!document.body.classList.contains("lock")&&e.touches.length===1)?e.touches[0].clientY:null;dy=0},{passive:true});
+  addEventListener("touchmove",e=>{if(y0==null)return;dy=Math.max(0,e.touches[0].clientY-y0);const k=Math.min(dy,110);ind.style.transform=`translate(-50%,${k-50}px) rotate(${k*3}deg)`;ind.style.opacity=Math.min(1,k/70);ind.classList.toggle("ready",dy>90)},{passive:true});
+  addEventListener("touchend",()=>{if(y0==null)return;if(dy>90){ind.classList.add("spin");location.reload()}else{ind.style.transform="";ind.style.opacity=0}y0=null})})();
+let deferred=null;const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const dismissed=(()=>{try{return localStorage.getItem("rr-install-x")==="1"}catch(e){return false}})();
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;if(!standalone&&!dismissed&&me){$("#installBar").hidden=false;document.body.classList.add("has-install")}});
+const inApp=/FBAN|FBAV|Instagram|Line[/]|WhatsApp|GSA[/]/i.test(navigator.userAgent);
+const SHARE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg>';
+const PLUS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+function iosGuide(){
+  if(inApp){openSheet(`<div class="shead"><div><div class="label">Get the app</div><h2>Open in Safari first</h2></div><button type="button" class="btn sm" id="gX">Close</button></div>
+    <p class="muted" style="margin:0">This link opened inside another app. To add Review Room to your home screen, open it in Safari.</p>
+    <ol class="steps"><li>Tap the <b>⋯</b> or <b>compass</b> button at the corner of this screen</li><li>Choose <b>Open in Safari</b></li><li>Then tap <b>Get the app</b> again</li></ol>
+    <button class="btn primary lg" id="gCopy">Copy link instead</button>`,()=>{$("#gX").onclick=closeSheet;$("#gCopy").onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname);toast("Link copied. Paste it in Safari.")}catch(e){}}});return}
+  openSheet(`<div class="shead"><div><div class="label">Get the app</div><h2>Add to your home screen</h2></div><button type="button" class="btn sm" id="gX">Close</button></div>
+    <p class="muted" style="margin:0">Takes 10 seconds. After this, Review Room opens like an app and keeps you signed in.</p>
+    <ol class="steps"><li><span>Tap the Share button ${SHARE} at the bottom of Safari</span></li><li><span>Scroll down and tap <b>Add to Home Screen</b> ${PLUS}</span></li><li><span>Tap <b>Add</b> at the top right</span></li></ol>
+    <button class="btn primary lg" id="gGo">Show me where</button>`,()=>{$("#gX").onclick=closeSheet;$("#gGo").onclick=()=>{closeSheet();const d=document.createElement("div");d.className="pointer";d.innerHTML=`<span>Tap Share below</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M5 13l7 7 7-7"/></svg>`;document.body.appendChild(d);setTimeout(()=>d.remove(),9000);addEventListener("touchstart",()=>d.remove(),{once:true})}})}
+if(ios){$("#installText").textContent="Open Review Room like an app, without typing the link.";$("#installBtn").textContent="Show me how"}
+const hideInstall=()=>{$("#installBar").hidden=true;document.body.classList.remove("has-install")};
+$("#installBtn").onclick=async()=>{if(ios){iosGuide();return}if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;hideInstall()};
+$("#installX").onclick=()=>{hideInstall();try{localStorage.setItem("rr-install-x","1")}catch(e){}};
+
+boot();
+</script>
+</body>
+</html>
