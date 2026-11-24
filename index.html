@@ -784,7 +784,6 @@ body.composing .main{padding-bottom:100vh!important}
       <button class="btn primary lg" id="loginBtn" type="submit">Sign in</button>
       <div class="msg" id="loginMsg" role="status"></div>
       <button class="link" type="button" id="forgotBtn">Forgot your password?</button>
-      <button class="btn block" type="button" id="magicBtn">Email me a sign-in link (no password)</button>
     </form>
     <form class="form" id="resetForm" hidden novalidate>
       <div><div class="label">Account</div><h2>Choose a new password</h2></div>
@@ -869,12 +868,6 @@ $("#forgotBtn").onclick=async()=>{const email=$("#email").value.trim(),m=$("#log
   if(!email){m.className="msg";m.textContent="Type your email above first.";$("#email").focus();return}
   const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
   m.className=error?"msg":"msg good";m.textContent=error?error.message:"We’ve sent a reset link to your email. Check spam too.";};
-$("#magicBtn").onclick=async()=>{const email=$("#email").value.trim(),m=$("#loginMsg");
-  if(!email){m.className="msg";m.textContent="Type your email above first.";$("#email").focus();return}
-  const b=$("#magicBtn");b.disabled=true;b.textContent="Sending…";
-  const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:location.href}});
-  b.disabled=false;b.textContent="Email me a sign-in link (no password)";
-  m.className=error?"msg":"msg good";m.textContent=error?(/signups|not allowed|invitation/i.test(error.message)?"This email isn’t on our client list yet. Ask the team to add you.":error.message):"Check your email and tap the link. You’ll be signed in straight away.";};
 sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recovering=true;showAuth(true)}});
 $("#resetForm").addEventListener("submit",async e=>{e.preventDefault();
   const p1=$("#newPass").value,p2=$("#newPass2").value,m=$("#resetMsg");m.className="msg";
