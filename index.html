@@ -569,7 +569,11 @@ body.composing .dock{visibility:hidden}
 .csend{width:38px;height:38px;flex:none;border-radius:50%;border:0;display:grid;place-items:center;background:var(--accent);color:#fff;transition:transform .3s var(--spring),opacity .2s}
 .csend svg{width:19px;height:19px}.csend:active{transform:scale(.9)}
 .csend.busy{opacity:.5;pointer-events:none}.csend.busy svg{animation:spin .8s linear infinite}
-.donerow{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.donerow{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.cbox{margin-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.donerow:not([hidden]){margin-top:-6px}
+.sheet:has(.donerow:not([hidden])) .cbox{margin-bottom:0}
+html.kb-open .cbox{margin-bottom:8px}
 .sheet.typing .rc-select{display:none}
 html.kb-open .sheet.half{top:var(--vvb);bottom:auto;translate:0 -100%;transition:transform .25s ease}
 html.kb-open .sheet .sendrow{padding-bottom:8px;padding-top:8px}
