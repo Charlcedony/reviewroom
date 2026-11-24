@@ -562,7 +562,12 @@ body.composing .dock{visibility:hidden}
 .pshare,#shGo{gap:8px}.pshare svg,#shGo svg{width:18px;height:18px}
 .pchip svg{width:14px;height:14px}
 .pacts .pchip{padding:0 10px}
-.shprev{white-space:pre-wrap;font-size:14px;line-height:1.45;padding:12px 14px;border-radius:14px;background:var(--fill2);color:var(--ink2);max-height:34vh;overflow:auto}
+.shcard{border-radius:16px;background:var(--fill2);overflow:hidden}
+.shfile{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:.5px solid var(--line)}
+.shprev{white-space:pre-wrap;font-size:14px;line-height:1.45;padding:12px 14px;color:var(--ink2);max-height:28vh;overflow:auto}
+.seg2{display:grid;grid-template-columns:1fr 1fr;padding:2px;border-radius:10px;background:var(--fill)}
+.seg2 button{border:0;background:none;height:34px;border-radius:8px;font:600 13px var(--font);color:var(--muted)}
+.seg2 button.on{background:var(--panel);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .wonfirst{display:grid;gap:8px;margin:0 12px 12px}
 .wonrow{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border-radius:16px;background:var(--ok-soft)}
 .dlbtn{flex:none;height:36px;min-height:36px;padding:0 16px;font-size:14px}
@@ -1398,28 +1403,32 @@ function planSheet(v){
     const go=(cal,share)=>{const val=$("#pAt").value;if(!val){$("#pMsg").textContent="Pick a day and time.";return}if(!sel.size){$("#pMsg").textContent="Pick at least one place to post.";return}save(new Date(val).toISOString(),cal,share)};
     $("#pCal").onclick=()=>go(true);$("#pShare").onclick=()=>go(false,true);$("#pGo").onclick=()=>go(false);
     if($("#pDel"))$("#pDel").onclick=()=>save(null,false)})}
-async function shareText(v){let link="";
-  if(v.storage_path){const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,60*60*24*7);if(data)link=data.signedUrl}else if(v.link)link=v.link;
-  const lines=["📅 Posting plan: "+v.title];if(v.post_at)lines.push("🗓 "+postWhen(v.post_at));if(v.platforms&&v.platforms.length)lines.push("📍 "+v.platforms.join(", "));
-  if(v.caption)lines.push("","✍️ Caption:",v.caption);if(link)lines.push("","🎬 Video (link works for 7 days):",link);return lines.join("\n")}
+function shareText(v){
+  const lines=["*"+v.title+"*"];
+  if(v.post_at)lines.push("Post on "+postWhen(v.post_at).replace(" · ",", "));
+  if(v.platforms&&v.platforms.length)lines.push(v.platforms.join(" · "));
+  if(v.caption)lines.push("","Caption:",v.caption);
+  return lines.join("\n")}
 function shareSheet(v){
-  const canFiles=!!(navigator.canShare&&window.File);let file=null,text="";
-  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Share with your team</h2><div class="rc-sub">Video, caption and posting time</div></div><button type="button" class="iconx" id="shX" aria-label="Close">✕</button></div>
-    <div class="shprev" id="shPrev">Preparing…</div>
-    <button class="btn primary lg" id="shGo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Preparing video…</span></button>
-    <button class="btn lg wa" id="shWa" disabled>Send on WhatsApp (text + link)</button>
+  let file=null,blob=null;const text=shareText(v);const nm=(v.title||"video").replace(/[^\w\- ]+/g,"").trim()||"video";
+  const ext=v.storage_path?(v.storage_path.split(".").pop()||"mp4").slice(0,4):"mp4";
+  const ok=f=>{try{return !!(navigator.canShare&&navigator.canShare({files:[f]}))}catch(e){return false}};
+  const make=()=>{if(!blob)return null;const d=new File([blob],nm+"."+ext,{type:"application/octet-stream"});if(ok(d))return d;const vid=new File([blob],nm+"."+ext,{type:blob.type||"video/mp4"});return ok(vid)?vid:null};
+  const waIc='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.3z"/></svg>';
+  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Send to your team</h2><div class="rc-sub">Video + posting plan, on WhatsApp</div></div><button type="button" class="iconx" id="shX" aria-label="Close">✕</button></div>
+    <div class="shcard"><div class="shfile"><span class="pi blue">${PI.cal}</span><span class="pt"><b>${esc(nm)}.${esc(ext)}</b><small id="shSize">Preparing video…</small></span></div><div class="shprev" id="shPrev"></div></div>
+    <button class="btn lg wa" id="shGo" disabled>${waIc}<span>Preparing…</span></button>
+    <div class="small muted" id="shHint" style="text-align:center;margin-top:-6px">Tap WhatsApp in the menu, then choose who to send it to.</div>
     <div class="msg" id="shMsg"></div>`,
-  async()=>{$("#shX").onclick=closeSheet;
-    text=await shareText(v);$("#shPrev").textContent=text.replace(/https?:\S+/,"[video link]");$("#shWa").disabled=false;
-    $("#shWa").onclick=()=>{const enc=encodeURIComponent(text);if(/android|iphone|ipad|ipod/i.test(navigator.userAgent)){location.href="whatsapp://send?text="+enc;setTimeout(()=>{if(!document.hidden)window.open("https://wa.me/?text="+enc,"_blank","noopener")},1200)}else window.open("https://wa.me/?text="+enc,"_blank","noopener")};
+  async()=>{$("#shX").onclick=closeSheet;$("#shPrev").textContent=text.replace(/\*/g,"");
     const go=$("#shGo");
-    if(canFiles&&v.storage_path){try{const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,600);const bl=await (await fetch(data.signedUrl)).blob();
-        const ext=(v.storage_path.split(".").pop()||"mp4").slice(0,4);const f=new File([bl],(v.title||"video").replace(/[^\w\- ]+/g,"").trim()+"."+ext,{type:bl.type||"video/mp4"});
-        if(navigator.canShare({files:[f]}))file=f}catch(e){}}
-    go.disabled=false;go.querySelector("span").textContent=file?"Share video + details":"Share details";
-    go.onclick=async()=>{try{if(file)await navigator.share({files:[file],text,title:v.title});else if(navigator.share)await navigator.share({text,title:v.title});else{$("#shWa").click();return}
-        closeSheet();toast("Shared ✓")}catch(e){if(e&&e.name!=="AbortError")$("#shMsg").textContent="Couldn’t open sharing here. Use the WhatsApp button below."}};
-    if(file)$("#shMsg").textContent="";})}
+    const waText=()=>{const enc=encodeURIComponent(text);if(/android|iphone|ipad|ipod/i.test(navigator.userAgent)){location.href="whatsapp://send?text="+enc;setTimeout(()=>{if(!document.hidden)window.open("https://wa.me/?text="+enc,"_blank","noopener")},1200)}else window.open("https://wa.me/?text="+enc,"_blank","noopener")};
+    if(v.storage_path){try{const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,600);blob=await (await fetch(data.signedUrl)).blob();
+      $("#shSize").textContent=(blob.size/1048576).toFixed(1)+" MB · sent as a file (full quality)";file=make()}catch(e){$("#shSize").textContent="Couldn’t load the video"}}
+    go.disabled=false;go.querySelector("span").textContent="Send on WhatsApp";
+    if(!file){$("#shHint").textContent=v.storage_path?"This browser can’t attach the video — only the plan text will be sent. Use the app on your phone to include the video.":"WhatsApp opens with the plan ready to send."}
+    go.onclick=async()=>{if(!file){waText();return}
+      try{await navigator.share({files:[file],text});closeSheet();toast("Sent ✓")}catch(e){if(e&&e.name!=="AbortError")$("#shMsg").textContent="Sharing didn’t open. Please try again."}}})}
 function downloadIcs(v){const a=document.createElement("a");a.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(icsFor(v));a.download=(v.title||"post").replace(/[^\w ]+/g,"").trim()+".ics";document.body.appendChild(a);a.click();a.remove()}
 // 4) content calendar
 function calendarSheet(){
