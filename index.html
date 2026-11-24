@@ -1593,7 +1593,7 @@ function icsFor(v){const t=new Date(v.post_at),e=new Date(t.getTime()+15*60e3),f
     "SUMMARY:"+esc2("Post: "+v.title),"DESCRIPTION:"+esc2((v.platforms||[]).join(", ")+(v.caption?"\n\n"+v.caption:"")+"\n\n"+shareLink(v)),
     "BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY","DESCRIPTION:Time to post","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n")}
 function bigFileHelp(file){const mb=(file.size/1048576).toFixed(0);
-  const m=$("#fMsg")||$("#sheetBody .msg");const html=`<div class="bigfile"><b>This file is ${mb} MB. The limit is 50 MB.</b>
+  const m=$("#fMsgOut")||$("#sheetBody .msg");const html=`<div class="bigfile"><b>This file is ${mb} MB. The limit is 50 MB.</b>
     <ol><li>Export again at <b>1080p, 8 Mbps</b> (about 1 min = 60 MB → 40 MB), or use HandBrake → preset <b>“Social 1080p”</b>.</li>
     <li>Or upload it to Google Drive / YouTube (unlisted) and paste the link in <b>Video link</b> instead.</li></ol></div>`;
   if(m){m.className="msg";m.innerHTML=html}else toast("File is "+mb+" MB. Limit is 50 MB.",true)}
