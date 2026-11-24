@@ -555,6 +555,9 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.cbar #recBtn{width:38px;height:38px;background:var(--accent);color:#fff;box-shadow:none}.cbar #recBtn svg{width:19px;height:19px}
+.cbar #recBtn,.cbar #sSend{animation:pop .22s var(--spring)}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
 .pbtns{display:grid;grid-template-columns:1fr auto;gap:8px}
 .pshare,#shGo{gap:8px}.pshare svg,#shGo svg{width:18px;height:18px}
 .pchip svg{width:14px;height:14px}
@@ -1003,7 +1006,7 @@ function changeSheet(v,vid){
     const fillSugg=()=>{};const iss=$("#sIssue");
     iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";iss.parentElement.querySelector("select").style.width="auto";if(o)$("#sNote").focus()};
     
-    const sh=$("#sheet"),ta0=$("#sNote");const clr=()=>{$("#sMsg").textContent=""};ta0.addEventListener("input",clr);$("#sIssue").addEventListener("change",clr);$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("button,select,input"))setTimeout(()=>{if(!e.target.closest("#sSend"))clr()},0)},true);
+    const sh=$("#sheet"),ta0=$("#sNote");ta0.addEventListener("input",()=>window.__upd&&window.__upd());$("#sIssue").addEventListener("change",()=>window.__upd&&window.__upd());setTimeout(()=>window.__upd&&window.__upd(),0);const clr=()=>{$("#sMsg").textContent=""};ta0.addEventListener("input",clr);$("#sIssue").addEventListener("change",clr);$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("button,select,input"))setTimeout(()=>{if(!e.target.closest("#sSend"))clr()},0)},true);
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
     ta0.addEventListener("focus",()=>{sh.classList.add("typing")});
     ta0.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==ta0)sh.classList.remove("typing")},150));
@@ -1013,22 +1016,25 @@ function changeSheet(v,vid){
     // ---- voice note ----
     let blob=null,mr=null,stream=null,tick=null;
     const recBox=$("#recBox");
-    const idle=()=>{recBox.hidden=true;recBox.innerHTML="";if($("#recBtn"))$("#recBtn").hidden=false};
+    const upd=()=>{const has=!!($("#sNote").value.trim()||$("#sIssue").value||blob||markBlob);const rec=mr&&mr.state==="recording";
+      const rb=$("#recBtn"),sb2=$("#sSend");if(rb)rb.hidden=has||rec;if(sb2)sb2.hidden=!has&&!!rb&&!rec;if(rec&&sb2)sb2.hidden=true};
+    window.__upd=upd;
+    const idle=()=>{recBox.hidden=true;recBox.innerHTML="";upd()};
     const stopAll=()=>{clearInterval(tick);if(mr&&mr.state!=="inactive")mr.stop();if(stream)stream.getTracks().forEach(t=>t.stop())};
     async function start(){try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){micHelp();return}
       const type=["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||"";
       mr=new MediaRecorder(stream,type?{mimeType:type}:undefined);const parts=[];mr.ondataavailable=e=>{if(e.data.size)parts.push(e.data)};
-      mr.onstop=()=>{stream.getTracks().forEach(t=>t.stop());blob=new Blob(parts,{type:mr.mimeType||type||"audio/mp4"});
+      mr.onstop=()=>{stream.getTracks().forEach(t=>t.stop());blob=new Blob(parts,{type:mr.mimeType||type||"audio/mp4"});setTimeout(()=>window.__upd&&window.__upd(),0);
         recBox.hidden=false;recBox.innerHTML=`<audio controls src="${URL.createObjectURL(blob)}"></audio><button type="button" class="cbtn" id="recDel" aria-label="Delete voice note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>`;
         $("#recDel").onclick=()=>{blob=null;idle()}};
       mr.start();const t0=Date.now();
-      $("#recBtn").hidden=true;recBox.hidden=false;recBox.innerHTML=`<span class="rdot"></span><span class="rt" id="recT">0:00</span><span class="rl">Recording… tap ■ when done</span><button type="button" class="rstop" id="recStop" aria-label="Stop recording"><i></i></button>`;
+      $("#recBtn").hidden=true;$("#sSend").hidden=true;recBox.hidden=false;recBox.innerHTML=`<span class="rdot"></span><span class="rt" id="recT">0:00</span><span class="rl">Recording… tap ■ when done</span><button type="button" class="rstop" id="recStop" aria-label="Stop recording"><i></i></button>`;
       $("#recStop").onclick=()=>{clearInterval(tick);mr.stop()};
       tick=setInterval(()=>{const s=(Date.now()-t0)/1000;$("#recT").textContent=fmt(s);if(s>=180){clearInterval(tick);mr.stop()}},250)}
     if($("#recBtn"))$("#recBtn").onclick=start;
     // ---- drawing: full-screen, on a still of this exact moment ----
     let markBlob=null;
-    const showMark=()=>{const mp=$("#markPrev");if(!markBlob){mp.hidden=true;mp.innerHTML="";$("#drawBtn")&&$("#drawBtn").classList.remove("on");return}
+    const showMark=()=>{const mp=$("#markPrev");window.__upd&&window.__upd();if(!markBlob){mp.hidden=true;mp.innerHTML="";$("#drawBtn")&&$("#drawBtn").classList.remove("on");return}
       mp.hidden=false;mp.innerHTML=`<span class="rc-dot"></span><span style="flex:1">Drawing added at ${fmt(secs)}</span><button type="button" class="link" id="mEdit">Redo</button><button type="button" class="link" id="mDel">Remove</button>`;
       $("#drawBtn").classList.add("on");$("#mEdit").onclick=openDraw;$("#mDel").onclick=()=>{markBlob=null;showMark()}};
     function openDraw(){if(!vid)return;vid.pause();const src=(vid.currentSrc||vid.src).split("#")[0];
@@ -1056,7 +1062,7 @@ function changeSheet(v,vid){
         const out=document.createElement("canvas");out.width=Math.round(bx.w*2);out.height=Math.round(bx.h*2);const o=out.getContext("2d");
         o.setTransform(out.width,0,0,out.height,0,0);o.lineCap="round";o.lineJoin="round";o.strokeStyle="#ff3b30";o.lineWidth=6/bx.w;
         strokes.forEach(s=>{o.beginPath();s.forEach(([x,y],i)=>i?o.lineTo(x,y):o.moveTo(x,y));if(s.length===1)o.lineTo(s[0][0]+.001,s[0][1]);o.stroke()});
-        out.toBlob(b=>{markBlob=b;showMark();close()},"image/png")};
+        out.toBlob(b=>{markBlob=b;showMark();close();window.__upd&&window.__upd()},"image/png")};
       sheetCleanupDraw=close}
     let sheetCleanupDraw=null;
     if($("#drawBtn"))$("#drawBtn").onclick=openDraw;
