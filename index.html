@@ -469,7 +469,7 @@ body.composing .app.client .player video,body.composing .player video{max-height
 .dock .btn{min-height:50px;border-radius:14px;font-size:16px}
 .dock .btn.fix{background:var(--fill);color:var(--ink)}
 body.has-install .dock{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
-body.composing .player video{max-height:30vh;transition:max-height .4s var(--spring)}
+body.composing .player video{max-height:30vh}
 body.composing .dock{visibility:hidden}
 .sheet.half{gap:12px}
 .sheet.half .cathint,.sheet.half .moment .mhint{display:none}
@@ -555,6 +555,15 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+body.composing .dock{display:none}
+.crec{display:flex;align-items:center;gap:8px;padding:2px 4px 4px 0;min-width:0}
+.crec audio{flex:1;min-width:0;height:36px}
+.rdot{width:10px;height:10px;border-radius:50%;background:#ff3b30;animation:blink 1s infinite;flex:none}
+.rt{font:600 15px var(--mono);color:#ff3b30}
+.rl{flex:1;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rstop{width:34px;height:34px;flex:none;border:0;border-radius:50%;background:#ff3b30;display:grid;place-items:center}
+.rstop i{width:12px;height:12px;border-radius:2px;background:#fff}
+.cbox:has(.crec:not([hidden])) textarea{display:none}
 .check{display:flex!important;flex-wrap:nowrap!important;align-items:center;justify-content:space-between;gap:10px;padding:6px 6px 6px 12px!important;border-radius:12px;background:var(--panel)}
 .check>span{font-size:14px;font-weight:600;white-space:nowrap}
 .yn{display:flex;padding:2px;border-radius:10px;background:var(--fill);flex:none}
@@ -887,13 +896,12 @@ function changeSheet(v,vid){
    ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12H3m0 0 3-3m-3 3 3 3M16 12h5m0 0-3-3m3 3-3 3"/></svg>Drag the slider to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
    <div class="msg" id="sMsg"></div>
-   <div class="cbox"><textarea id="sNote" rows="1" maxlength="2000" placeholder="Describe the change…"></textarea>
+   <div class="cbox"><textarea id="sNote" rows="1" maxlength="2000" placeholder="Describe the change…"></textarea><div class="crec" id="recBox" hidden></div>
      <div class="cbar"><label class="ipill"><span class="sr">Issue</span><select id="sIssue"><option value="">Issue type</option><option>Cut this part</option><option>Trim / shorten</option><option>Text or spelling</option><option>Music or sound</option><option>Colour or picture</option><option value="__other">Other (type it)</option></select></label>
        <span style="flex:1"></span>
        ${vid?`<button type="button" class="cbtn" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="cbtn" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}
        <button type="button" class="csend" id="sSend" aria-label="Send note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
    <div class="rc-att" id="markPrev" hidden></div>
-   <div class="rec" id="recBox" hidden></div>
    <div class="donerow" id="sendRow" hidden><button class="btn lg block" id="sDone">Done</button></div>`,
   ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=dur||99999;let picked=!vid||vid.currentTime>=1;let warned=false;
     const pickUI=()=>{const f=$("#frameBox");if(f)f.classList.toggle("needpick",!picked)};
@@ -904,7 +912,7 @@ function changeSheet(v,vid){
     const fillSugg=()=>{};const iss=$("#sIssue");
     iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";iss.parentElement.querySelector("select").style.width="auto";if(o)$("#sNote").focus()};
     
-    const sh=$("#sheet"),ta0=$("#sNote");
+    const sh=$("#sheet"),ta0=$("#sNote");const clr=()=>{$("#sMsg").textContent=""};ta0.addEventListener("input",clr);$("#sIssue").addEventListener("change",clr);$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("button,select,input"))setTimeout(()=>{if(!e.target.closest("#sSend"))clr()},0)},true);
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
     ta0.addEventListener("focus",()=>{sh.classList.add("typing")});
     ta0.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==ta0)sh.classList.remove("typing")},150));
@@ -920,10 +928,10 @@ function changeSheet(v,vid){
       const type=["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||"";
       mr=new MediaRecorder(stream,type?{mimeType:type}:undefined);const parts=[];mr.ondataavailable=e=>{if(e.data.size)parts.push(e.data)};
       mr.onstop=()=>{stream.getTracks().forEach(t=>t.stop());blob=new Blob(parts,{type:mr.mimeType||type||"audio/mp4"});
-        recBox.hidden=false;recBox.innerHTML=`<audio controls src="${URL.createObjectURL(blob)}"></audio><button type="button" class="btn sm" id="recDel">Delete</button>`;
+        recBox.hidden=false;recBox.innerHTML=`<audio controls src="${URL.createObjectURL(blob)}"></audio><button type="button" class="cbtn" id="recDel" aria-label="Delete voice note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>`;
         $("#recDel").onclick=()=>{blob=null;idle()}};
       mr.start();const t0=Date.now();
-      $("#recBtn").hidden=true;recBox.hidden=false;recBox.innerHTML=`<button type="button" class="recbtn on" id="recStop"><span class="dot"></span><span>Stop recording</span></button><span class="t" id="recT">0:00</span>`;
+      $("#recBtn").hidden=true;recBox.hidden=false;recBox.innerHTML=`<span class="rdot"></span><span class="rt" id="recT">0:00</span><span class="rl">Recording… tap ■ when done</span><button type="button" class="rstop" id="recStop" aria-label="Stop recording"><i></i></button>`;
       $("#recStop").onclick=()=>{clearInterval(tick);mr.stop()};
       tick=setInterval(()=>{const s=(Date.now()-t0)/1000;$("#recT").textContent=fmt(s);if(s>=180){clearInterval(tick);mr.stop()}},250)}
     if($("#recBtn"))$("#recBtn").onclick=start;
@@ -1192,7 +1200,7 @@ function wire(){
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
   on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
     $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid);
-    if(vid){setTimeout(()=>fitVideo(vid),300);setTimeout(()=>fitVideo(vid),800);window.__fitVid=vid}});
+    if(vid){setTimeout(()=>fitVideo(vid),250);setTimeout(()=>fitVideo(vid),700);setTimeout(()=>fitVideo(vid),1300);window.__fitVid=vid}});
   on("[data-ctab]",b=>{ctab=b.dataset.ctab;render()});
   on("[data-vf]",b=>{vfilter=b.dataset.vf;render()});
   on("[data-open]",b=>{openVideo=b.dataset.open;render();scrollTo(0,0)});
