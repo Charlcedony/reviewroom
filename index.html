@@ -555,6 +555,10 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.toast{top:calc(env(safe-area-inset-top,0px) + 66px)!important;bottom:auto!important;transform:translate(-50%,-14px)!important;font-size:14px!important;padding:10px 16px!important;max-width:min(86vw,420px)!important;line-height:1.3;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
+.toast.show{transform:translate(-50%,0)!important}
+.msg.sentok{display:flex!important;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:var(--ok-soft);color:var(--ink2);font-weight:500;font-size:13.5px;margin:0!important}
+.msg.sentok b{color:var(--ink)}.msg.sentok .ok-ic{flex:none;width:20px;height:20px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}
 #splash{position:fixed;inset:0;z-index:999;display:grid;place-items:center;background:var(--bg);transition:opacity .4s ease,visibility .4s}
 #splash.out{opacity:0;visibility:hidden}
 .sp-in{display:grid;justify-items:center;gap:14px;animation:spIn .6s var(--spring) both}
@@ -871,7 +875,7 @@ const ago=d=>{const s=(Date.now()-new Date(d))/1e3;if(s<60)return"just now";if(s
 const dateTxt=d=>d?new Date(d+"T00:00:00").toLocaleDateString(undefined,{day:"numeric",month:"short"}):"";
 const dueTxt=d=>{if(!d)return"";const days=Math.round((new Date(d+"T00:00:00")-new Date(new Date().toDateString()))/864e5);
   return days<0?"Was due "+dateTxt(d):days===0?"Due today":days===1?"Due tomorrow":"Due "+dateTxt(d)};
-function toast(t,bad){const el=$("#toast");el.textContent=t;el.className="toast show"+(bad?" bad":"");clearTimeout(el._t);el._t=setTimeout(()=>el.className="toast",2800)}
+function toast(t,bad){const el=$("#toast");el.textContent=t;el.className="toast show"+(bad?" bad":"");clearTimeout(el._t);el._t=setTimeout(()=>el.className="toast",3800)}
 
 // ================= state =================
 let cmp={};
@@ -1106,7 +1110,7 @@ function changeSheet(v,vid){
     const fillSugg=()=>{};const iss=$("#sIssue");
     iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";iss.parentElement.querySelector("select").style.width="auto";if(o)$("#sNote").focus()};
     
-    const sh=$("#sheet"),ta0=$("#sNote");ta0.addEventListener("input",()=>window.__upd&&window.__upd());$("#sIssue").addEventListener("change",()=>window.__upd&&window.__upd());setTimeout(()=>window.__upd&&window.__upd(),0);const clr=()=>{const m=$("#sMsg");if(m)m.textContent=""};ta0.addEventListener("input",clr);$("#sIssue").addEventListener("change",clr);if(!window.__clrOn){window.__clrOn=1;$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("button,select,input"))setTimeout(()=>{if(!e.target.closest("#sSend"))clr()},0)},true)}
+    const sh=$("#sheet"),ta0=$("#sNote");ta0.addEventListener("input",()=>window.__upd&&window.__upd());$("#sIssue").addEventListener("change",()=>window.__upd&&window.__upd());setTimeout(()=>window.__upd&&window.__upd(),0);const clr=()=>{const m=$("#sMsg");if(m&&!m.classList.contains("sentok")){m.textContent=""}};ta0.addEventListener("input",()=>{const m=$("#sMsg");if(m&&m.classList.contains("sentok")){m.className="msg";m.textContent=""}});ta0.addEventListener("input",clr);$("#sIssue").addEventListener("change",clr);if(!window.__clrOn){window.__clrOn=1;$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("button,select,input"))setTimeout(()=>{if(!e.target.closest("#sSend"))clr()},0)},true)}
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
     ta0.addEventListener("focus",()=>{sh.classList.add("typing")});
     ta0.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==ta0)sh.classList.remove("typing")},150));
@@ -1190,7 +1194,7 @@ function changeSheet(v,vid){
       $("#sNote").value="";$("#sNote").style.height="";$("#sIssue").value="";$("#sIssue").onchange();blob=null;idle();markBlob=null;showMark();cats=new Set(["clip"]);syncCats();
       sh.classList.remove("typing");document.activeElement&&document.activeElement.blur&&document.activeElement.blur();
       b.disabled=false;b.classList.remove("busy");$("#sendRow").hidden=false;
-      $("#sMsg").textContent="";toast("Sent ✓ Move to the next moment to add another.");
+      {const m=$("#sMsg");m.className="msg sentok";m.innerHTML=`<span class="ok-ic">✓</span><span><b>Note sent${time&&time!=="Message"&&time!=="Whole video"?" at "+esc(time):""}.</b> Move the slider to add another, or tap Done.</span>`}
       load().then(()=>render(true))}});
 }
 function accountSheet(){
