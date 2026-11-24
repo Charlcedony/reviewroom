@@ -555,6 +555,11 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.drv{position:relative;width:100%;aspect-ratio:9/16;max-height:min(62vh,640px);margin:0 auto;background:#000}
+.drv iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.app.client .player .drv{max-height:max(280px,calc(100dvh - 400px))}
+.mantime{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 8px 8px 14px;border-radius:14px;background:var(--fill2);font-size:14px;font-weight:600}
+.mantime input{width:84px;height:36px;border:0;border-radius:10px;background:var(--panel);text-align:center;font:600 16px var(--mono);color:var(--ink)}
 .storage{padding:14px 16px;margin-bottom:12px;display:grid;gap:8px}
 .st-top{display:flex;justify-content:space-between;align-items:baseline}.st-top span{font-size:13px;color:var(--muted);font-weight:600}
 .st-bar{height:8px;border-radius:99px;background:var(--fill);overflow:hidden}.st-bar i{display:block;height:100%;width:0;background:var(--ok);border-radius:99px;transition:width .6s var(--spring)}
@@ -979,6 +984,7 @@ function playerHtml(v){if(cmp[v.id])return cmpHtml(v);const sel=vsel[v.id];if(se
   const u=urls[v.id];const safeLink=/^https:\/\//i.test(v.link||"")?v.link:"";
   return `<div class="player">${u?`<span class="ptag ${isAdmin()&&v.due_date&&v.status==="pending"&&/^Was due/.test(dueTxt(v.due_date))?"late":""}">v${v.version}${isAdmin()&&v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
     :v.storage_path?`<div class="ext"><span class="small">The video couldn’t load.</span><button class="btn sm" onclick="load().then(()=>render())">Try again</button></div>`
+    :safeLink&&driveId(safeLink)?`<div class="drv"><iframe src="https://drive.google.com/file/d/${esc(driveId(safeLink))}/preview" allow="autoplay; fullscreen" allowfullscreen loading="lazy" title="Video"></iframe></div>`
     :safeLink?`<div class="ext"><span class="small">This video opens in a new tab</span><a href="${esc(safeLink)}" target="_blank" rel="noopener">Watch the video</a></div>`
     :`<div class="ext"><span class="small">No video attached yet.</span></div>`}</div>`}
 function scrubHtml(v,vnotes){if(!urls[v.id]||!vnotes.length)return"";
@@ -1024,11 +1030,11 @@ function clientVideo(v){
   const head=`<header class="vhead"><div style="min-width:0"><h3>${esc(v.title)}</h3><div class="vsub"><span class="dotc ${v.status}"></span>${CLIENT_STATUS[v.status]}${v.status==="pending"&&v.due_date&&!/^Was due/.test(dueTxt(v.due_date))?" · Please review "+dueTxt(v.due_date).replace(/^Due /,"").replace(/^(\d|[A-Z][a-z]{2} )/,"by $1"):" · Updated "+ago(v.updated_at||v.created_at)}</div></div></header>`;
   const fromTeam=v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:"";
   if(v.status==="approved"){
-    const dl=v.storage_path?`<button class="btn primary sm dlbtn" data-dl="${v.id}">Download</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary sm dlbtn" href="${esc(v.link)}" target="_blank" rel="noopener">Open</a>`:"";
+    const dl=finalHref(v)?`<a class="btn primary sm dlbtn" href="${esc(finalHref(v))}" target="_blank" rel="noopener">Download</a>`:v.storage_path?`<button class="btn primary sm dlbtn" data-dl="${v.id}">Download</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary sm dlbtn" href="${esc(v.link)}" target="_blank" rel="noopener">Open</a>`:"";
     const rate=v.rating?`<div class="rate1"><span>Thanks for rating us</span><span class="starsTxt">${"★".repeat(v.rating)}</span></div>`
       :`<div class="rate1"><span>How did we do?</span><div class="stars sm">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`;
     return `<article class="card video rise">${head}
-     <div class="wonfirst"><div class="wonrow"><span class="pi green">${PI.check}</span><span class="pt"><b>Final video ready</b><small>Approved ${ago(v.updated_at||v.created_at)} · v${v.version}</small></span>${dl}</div>${planCard(v)}</div>
+     <div class="wonfirst"><div class="wonrow"><span class="pi green">${PI.check}</span><span class="pt"><b>Final video ready</b><small>${finalHref(v)?"Full quality · ":""}Approved ${ago(v.updated_at||v.created_at)} · v${v.version}</small></span>${dl}</div>${planCard(v)}</div>
      ${playerHtml(v)}
      <div class="vbody">
       <div class="after">${rate}</div>
@@ -1060,6 +1066,7 @@ function changeSheet(v,vid){
    ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12H3m0 0 3-3m-3 3 3 3M16 12h5m0 0-3-3m3 3-3 3"/></svg>Drag the slider to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted" id="sDur">/ ${dur?fmt(dur):"…"}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
    ${vid?`<button type="button" class="genlink" id="sGen">Not about one moment? Send a general message</button>`:""}
+   ${!vid?`<label class="mantime"><span>At what time? <span class="muted">(optional)</span></span><input id="sManT" inputmode="numeric" placeholder="0:00" maxlength="5"></label>`:""}
    <div class="msg" id="sMsg"></div>
    <div class="cbox"><textarea id="sNote" rows="1" maxlength="2000" placeholder="Describe the change…"></textarea><div class="crec" id="recBox" hidden></div><div class="rc-att" id="markPrev" hidden></div>
      <div class="cbar"><label class="ipill"><span class="sr">Issue</span><select id="sIssue"><option value="">Issue type</option><option>Cut this part</option><option>Trim / shorten</option><option>Text or spelling</option><option>Music or sound</option><option>Colour or picture</option><option value="__other">Other (type it)</option></select></label>
@@ -1146,14 +1153,15 @@ function changeSheet(v,vid){
       if(!note)note="Voice note";
       const type="clip";
       const whole=!vid||general;const at0=whole?0:secs;
-      const time=general?"Message":whole?"Whole video":fmt(at0),b=$("#sSend");b.disabled=true;b.classList.add("busy");
+      const mt=$("#sManT")&&$("#sManT").value.trim();const at1=!vid&&mt?parseT(mt):at0;
+      const time=general?"Message":!vid&&mt?fmt(at1):whole?"Whole video":fmt(at0),b=$("#sSend");b.disabled=true;b.classList.add("busy");
       let audio_path=null;
       if(blob){const ext=/webm/.test(blob.type)?"webm":"m4a";audio_path=`${me.id}/audio/${crypto.randomUUID()}.${ext}`;
         const up=await sb.storage.from("videos").upload(audio_path,blob,{contentType:blob.type});
         if(up.error){b.disabled=false;b.classList.remove("busy");$("#sMsg").textContent="Couldn’t upload the voice note. Try again.";return}}
       let mark_path=null;
       if(markBlob){mark_path=`${me.id}/marks/${crypto.randomUUID()}.png`;const mu=await sb.storage.from("videos").upload(mark_path,markBlob,{contentType:"image/png"});if(mu.error)mark_path=null}
-      let {error}=await sb.from("corrections").insert({video_id:v.id,type,time_label:time,seconds:at0,note,version:v.version,audio_path,mark_path});
+      let {error}=await sb.from("corrections").insert({video_id:v.id,type,time_label:time,seconds:at1,note,version:v.version,audio_path,mark_path});
       if(!error&&v.status!=="approved")({error}=await sb.rpc("set_video_status",{vid:v.id,new_status:"changes"}));
       if(error){b.disabled=false;b.classList.remove("busy");$("#sMsg").textContent="Couldn’t send. Check your connection and try again.";return}
       sent++;ctab="changes";
@@ -1262,8 +1270,9 @@ function videoForm(v,mode){ // mode: new | version | edit
    <div class="field"><label for="fTitle">Title</label><input class="input" id="fTitle" placeholder="e.g. Short 1 – The leper healed"></div>`:""}
    ${mode==="edit"?`<div class="field"><label for="fTitle">Title</label><input class="input" id="fTitle" value="${esc(v.title)}"></div>`:""}
    ${mode!=="edit"?`<label class="drop" id="fDrop"><input type="file" id="fFile" accept="video/*" hidden><b style="color:var(--ink)">Choose the video file</b><br><span class="small">MP4 or MOV, up to 50 MB</span></label>
-   <div class="field"><label for="fLink">Or paste a link instead (Google Drive, YouTube unlisted)</label><input class="input" id="fLink" type="url" placeholder="https://"></div>`:""}
+   <div class="field"><label for="fLink">Or paste a link instead <span class="muted">(Google Drive · plays inside the app)</span></label><input class="input" id="fLink" type="url" placeholder="https://"></div>`:""}
    <div class="field"><label for="fMsg">Message to the client <span class="muted">(optional)</span></label><textarea class="input" id="fMsg" placeholder="${mode==="version"?"e.g. We trimmed the intro and fixed the title spelling.":"e.g. Here’s the first cut. Please check the captions and music."}">${mode==="edit"?esc(v.message||""):""}</textarea></div>
+   <div class="field"><label for="fFinal">Final full-quality file <span class="muted">(optional · Google Drive link)</span></label><input class="input" id="fFinal" type="url" placeholder="https://drive.google.com/…" value="${mode!=="new"&&v.final_link?esc(v.final_link):""}"><span class="small muted">Share it as “Anyone with the link”. Clients download this after approving.</span></div>
    <div class="field"><label for="fDue">Review by <span class="muted">(optional)</span></label><input class="input" id="fDue" type="date" value="${mode!=="new"&&v.due_date?v.due_date:""}"></div>
    <div class="bar" id="fBar" hidden><i></i></div>
    <button class="btn primary lg" id="fGo">${mode==="edit"?"Save":"Send to client"}</button><div class="msg" id="fMsgOut"></div>`;
@@ -1279,21 +1288,21 @@ function wireVideoForm(v,mode){
     const t=$("#fTitle");if(t&&!t.value)t.value=file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ")};
   $("#fGo").onclick=async()=>{
     const m=$("#fMsgOut");m.className="msg";const b=$("#fGo");
-    const title=$("#fTitle")?$("#fTitle").value.trim():"",file=f?f.files[0]:null,link=$("#fLink")?$("#fLink").value.trim():"",message=$("#fMsg").value.trim()||null,due_date=$("#fDue").value||null;
+    const title=$("#fTitle")?$("#fTitle").value.trim():"",file=f?f.files[0]:null,link=$("#fLink")?$("#fLink").value.trim():"",final_link=($("#fFinal")&&$("#fFinal").value.trim())||null,message=$("#fMsg").value.trim()||null,due_date=$("#fDue").value||null;
     if(mode!=="version"&&!title){m.textContent="Add a title.";return}
     if(mode!=="edit"&&!file&&!link){m.textContent="Choose a video file or paste a link.";return}
     if(file&&file.size>50*1048576){m.textContent="That file is over 50 MB. Paste a share link instead.";return}
     b.disabled=true;
     try{
-      if(mode==="edit"){const {error}=await sb.from("videos").update({title,message,due_date}).eq("id",v.id);if(error)throw error;closeSheet();await load();render();toast("Saved");return}
+      if(mode==="edit"){const {error}=await sb.from("videos").update({title,message,due_date,final_link}).eq("id",v.id);if(error)throw error;closeSheet();await load();render();toast("Saved");return}
       const client_id=mode==="new"?$("#fClient").value:v.client_id;
       let storage_path=null;
       if(file&&file.size>50*1048576){b.disabled=false;b.textContent=mode==="new"?"Send for review":"Upload";bigFileHelp(file);return}
       if(file){$("#fBar").hidden=false;b.textContent="Uploading…";storage_path=`${client_id}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
         await uploadWithProgress(storage_path,file,p=>$("#fBar i").style.width=p+"%")}
       const now=new Date().toISOString();
-      const row=mode==="new"?{client_id,title,storage_path,link:file?null:link,message,due_date,version:1,status:"pending",updated_at:now}
-        :{storage_path,link:file?null:link,message,due_date,version:v.version+1,status:"pending",updated_at:now};
+      const row=mode==="new"?{client_id,title,storage_path,link:file?null:link,final_link,message,due_date,version:1,status:"pending",updated_at:now}
+        :{storage_path,link:file?null:link,final_link,message,due_date,version:v.version+1,status:"pending",updated_at:now};
       const {error}=mode==="new"?await sb.from("videos").insert(row):await sb.from("videos").update(row).eq("id",v.id);
       if(error){if(storage_path)await sb.storage.from("videos").remove([storage_path]);throw error}
       if(mode==="version"&&(v.storage_path||v.link))await sb.from("video_versions").insert({video_id:v.id,version:v.version,storage_path:v.storage_path,link:v.link});
@@ -1517,7 +1526,7 @@ function shareSheet(v){
     go.onclick=async()=>{$("#shMsg").textContent="";
       if(mode==="video"){if(!file){$("#shMsg").textContent="This browser can’t attach videos. Open the app on your phone, or choose the link option.";return}
         try{await navigator.share({files:[file],text:v.caption||text});closeSheet();toast("Sent ✓")}catch(e){if(e&&e.name!=="AbortError")$("#shMsg").textContent="Sharing didn’t open. Please try again."}return}
-      if(!v.storage_path){waText(text);return}
+      if(!v.storage_path||v.final_link){const fl=v.final_link||(/^https:/i.test(v.link||"")?v.link:"");waText(fl?text+"\n\n▶ Watch & download:\n"+fl:text);return}
       go.disabled=true;lbl.textContent="Creating link…";
       try{const link=await makeShareLink(v);preview(link);lbl.textContent="Send on WhatsApp";go.disabled=false;waText(text+"\n\n▶ Watch & download:\n"+link)}
       catch(e){go.disabled=false;lbl.textContent="Send on WhatsApp";$("#shMsg").textContent="Couldn’t create the link. Try again."}}})}
@@ -1590,6 +1599,8 @@ function bigFileHelp(file){const mb=(file.size/1048576).toFixed(0);
     <ol><li>Export again at <b>1080p, 8 Mbps</b> (about 1 min = 60 MB → 40 MB), or use HandBrake → preset <b>“Social 1080p”</b>.</li>
     <li>Or upload it to Google Drive / YouTube (unlisted) and paste the link in <b>Video link</b> instead.</li></ol></div>`;
   if(m){m.className="msg";m.innerHTML=html}else toast("File is "+mb+" MB. Limit is 50 MB.",true)}
+function driveId(u){const m=String(u||"").match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/);return m?m[1]:null}
+function finalHref(v){const f=v.final_link&&/^https:/i.test(v.final_link)?v.final_link:"";if(!f)return "";const id=driveId(f);return id?"https://drive.google.com/uc?export=download&id="+id:f}
 function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
   const rc=el.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,cols=["#22c55e","#3b6cff","#facc15","#f97316","#c084fc"];
   for(let i=0;i<28;i++){const d=document.createElement("i");d.className="confetti";const a=Math.random()*Math.PI*2,sp=80+Math.random()*140;
