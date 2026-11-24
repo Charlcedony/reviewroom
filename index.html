@@ -555,6 +555,11 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.pbtns{display:grid;grid-template-columns:1fr auto;gap:8px}
+.pshare,#shGo{gap:8px}.pshare svg,#shGo svg{width:18px;height:18px}
+.pchip svg{width:14px;height:14px}
+.pacts .pchip{padding:0 10px}
+.shprev{white-space:pre-wrap;font-size:14px;line-height:1.45;padding:12px 14px;border-radius:14px;background:var(--fill2);color:var(--ink2);max-height:34vh;overflow:auto}
 .wonfirst{display:grid;gap:8px;margin:0 12px 12px}
 .wonrow{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border-radius:16px;background:var(--ok-soft)}
 .dlbtn{flex:none;height:36px;min-height:36px;padding:0 16px;font-size:14px}
@@ -1289,6 +1294,7 @@ function wire(){
   on("[data-plan]",b=>planSheet(videos.find(x=>x.id===b.dataset.plan)));
   on("[data-ics]",b=>{downloadIcs(videos.find(x=>x.id===b.dataset.ics));toast("Opening your calendar…")});
   on("[data-calendar]",calendarSheet);
+  on("[data-share]",b=>shareSheet(videos.find(x=>x.id===b.dataset.share)));
   on("[data-cap]",async b=>{const v=videos.find(x=>x.id===b.dataset.cap);try{await navigator.clipboard.writeText(v.caption);toast("Caption copied ✓")}catch(e){prompt("Copy your caption:",v.caption)}});
   on("[data-posted]",async b=>{const v=videos.find(x=>x.id===b.dataset.posted);celebrate(b);const {error}=await sb.rpc("plan_post",{vid:v.id,at:v.post_at,plats:v.platforms||[],cap:v.caption||"",done:true});if(error)return toast("Couldn’t save.",true);await load();render();toast("Nice! Marked as posted 🎉")});
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
@@ -1358,7 +1364,7 @@ function planCard(v){
   const past=new Date(v.post_at)<Date.now();
   const title=v.posted?"Posted":past?"Time to post!":postShort(v.post_at);
   return `<div class="pbox"><button class="prow" data-plan="${v.id}"><span class="pi ${v.posted?"green":past?"orange":"blue"}">${v.posted?PI.check:PI.cal}</span><span class="pt"><b>${esc(title)}</b><small>${v.posted?esc(postShort(v.post_at))+" · ":""}${esc((v.platforms||[]).join(", "))}</small></span><span class="chev">›</span></button>
-    ${v.posted?"":`<div class="pacts">${v.caption?`<button class="pchip" data-cap="${v.id}">${PI.copy}Copy caption</button>`:""}<button class="pchip ok" data-posted="${v.id}">${PI.check}Mark as posted</button></div>`}</div>`}
+    ${v.posted?"":`<div class="pacts">${v.caption?`<button class="pchip" data-cap="${v.id}">${PI.copy}Caption</button>`:""}<button class="pchip" data-share="${v.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button><button class="pchip ok" data-posted="${v.id}">${PI.check}Posted</button></div>`}</div>`}
 function planSheet(v){
   const d0=v.post_at?new Date(v.post_at):null;const pad=n=>String(n).padStart(2,"0");
   const local=t=>`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
@@ -1371,20 +1377,43 @@ function planSheet(v){
     <div class="hrow plats">${PLATS.map(x=>`<button type="button" class="${sel.has(x)?"on":""}" data-p="${x}">${x}</button>`).join("")}</div>
     <details class="capbox" ${v.caption?"open":""}><summary>Caption <span>(optional)</span></summary><div class="capin"><textarea class="input" id="pCap" rows="3" placeholder="Write your caption…">${esc(v.caption||"")}</textarea><button type="button" class="link" id="pSug">✨ Suggest a caption</button></div></details>
     <div class="msg" id="pMsg"></div>
-    <button class="btn primary lg" id="pCal">${PI.cal}Add to calendar</button>
+    <div class="pbtns"><button class="btn primary lg" id="pCal">${PI.cal}Add to calendar</button><button class="btn lg pshare" id="pShare" aria-label="Share with your team"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></div>
     <div class="plan-foot"><button type="button" class="link" id="pGo">Just save, no calendar</button>${v.post_at?`<button type="button" class="link danger" id="pDel">Remove</button>`:""}</div>`,
   ()=>{$("#pX").onclick=closeSheet;
     $("#pAt").oninput=()=>$("#sheetBody").querySelectorAll(".qchips button").forEach(x=>x.classList.toggle("on",x.dataset.t===$("#pAt").value));
     $("#sheetBody").querySelectorAll(".qchips button").forEach(b=>b.onclick=()=>{$("#pAt").value=b.dataset.t;$("#sheetBody").querySelectorAll(".qchips button").forEach(x=>x.classList.toggle("on",x===b))});
     $("#sheetBody").querySelectorAll(".plats button").forEach(b=>b.onclick=()=>{const k=b.dataset.p;sel.has(k)?sel.delete(k):sel.add(k);b.classList.toggle("on")});
     $("#pSug").onclick=()=>{$("#pCap").value=captionFor(v)};
-    const save=async(at,cal)=>{const {error}=await sb.rpc("plan_post",{vid:v.id,at,plats:[...sel],cap:$("#pCap").value.trim(),done:false});
+    const save=async(at,cal,share)=>{const {error}=await sb.rpc("plan_post",{vid:v.id,at,plats:[...sel],cap:$("#pCap").value.trim(),done:false});
       if(error){$("#pMsg").textContent="Couldn’t save. Try again.";return}
-      if(cal)downloadIcs({...v,post_at:at,platforms:[...sel],caption:$("#pCap").value.trim()});
-      closeSheet();await load();render();toast(!at?"Removed":cal?"Added to your calendar ✓":"Saved ✓")};
-    const go=cal=>{const val=$("#pAt").value;if(!val){$("#pMsg").textContent="Pick a day and time.";return}if(!sel.size){$("#pMsg").textContent="Pick at least one place to post.";return}save(new Date(val).toISOString(),cal)};
-    $("#pCal").onclick=()=>go(true);$("#pGo").onclick=()=>go(false);
+      const nv={...v,post_at:at,platforms:[...sel],caption:$("#pCap").value.trim()};
+      if(cal)downloadIcs(nv);
+      closeSheet();await load();render();if(share){setTimeout(()=>shareSheet(videos.find(x=>x.id===v.id)||nv),320);return}toast(!at?"Removed":cal?"Added to your calendar ✓":"Saved ✓")};
+    const go=(cal,share)=>{const val=$("#pAt").value;if(!val){$("#pMsg").textContent="Pick a day and time.";return}if(!sel.size){$("#pMsg").textContent="Pick at least one place to post.";return}save(new Date(val).toISOString(),cal,share)};
+    $("#pCal").onclick=()=>go(true);$("#pShare").onclick=()=>go(false,true);$("#pGo").onclick=()=>go(false);
     if($("#pDel"))$("#pDel").onclick=()=>save(null,false)})}
+async function shareText(v){let link="";
+  if(v.storage_path){const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,60*60*24*7);if(data)link=data.signedUrl}else if(v.link)link=v.link;
+  const lines=["📅 Posting plan: "+v.title];if(v.post_at)lines.push("🗓 "+postWhen(v.post_at));if(v.platforms&&v.platforms.length)lines.push("📍 "+v.platforms.join(", "));
+  if(v.caption)lines.push("","✍️ Caption:",v.caption);if(link)lines.push("","🎬 Video (link works for 7 days):",link);return lines.join("\n")}
+function shareSheet(v){
+  const canFiles=!!(navigator.canShare&&window.File);let file=null,text="";
+  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Share with your team</h2><div class="rc-sub">Video, caption and posting time</div></div><button type="button" class="iconx" id="shX" aria-label="Close">✕</button></div>
+    <div class="shprev" id="shPrev">Preparing…</div>
+    <button class="btn primary lg" id="shGo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Preparing video…</span></button>
+    <button class="btn lg wa" id="shWa" disabled>Send on WhatsApp (text + link)</button>
+    <div class="msg" id="shMsg"></div>`,
+  async()=>{$("#shX").onclick=closeSheet;
+    text=await shareText(v);$("#shPrev").textContent=text.replace(/https?:\S+/,"[video link]");$("#shWa").disabled=false;
+    $("#shWa").onclick=()=>{const enc=encodeURIComponent(text);if(/android|iphone|ipad|ipod/i.test(navigator.userAgent)){location.href="whatsapp://send?text="+enc;setTimeout(()=>{if(!document.hidden)window.open("https://wa.me/?text="+enc,"_blank","noopener")},1200)}else window.open("https://wa.me/?text="+enc,"_blank","noopener")};
+    const go=$("#shGo");
+    if(canFiles&&v.storage_path){try{const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,600);const bl=await (await fetch(data.signedUrl)).blob();
+        const ext=(v.storage_path.split(".").pop()||"mp4").slice(0,4);const f=new File([bl],(v.title||"video").replace(/[^\w\- ]+/g,"").trim()+"."+ext,{type:bl.type||"video/mp4"});
+        if(navigator.canShare({files:[f]}))file=f}catch(e){}}
+    go.disabled=false;go.querySelector("span").textContent=file?"Share video + details":"Share details";
+    go.onclick=async()=>{try{if(file)await navigator.share({files:[file],text,title:v.title});else if(navigator.share)await navigator.share({text,title:v.title});else{$("#shWa").click();return}
+        closeSheet();toast("Shared ✓")}catch(e){if(e&&e.name!=="AbortError")$("#shMsg").textContent="Couldn’t open sharing here. Use the WhatsApp button below."}};
+    if(file)$("#shMsg").textContent="";})}
 function downloadIcs(v){const a=document.createElement("a");a.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(icsFor(v));a.download=(v.title||"post").replace(/[^\w ]+/g,"").trim()+".ics";document.body.appendChild(a);a.click();a.remove()}
 // 4) content calendar
 function calendarSheet(){
