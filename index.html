@@ -555,9 +555,10 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
-.drv{position:relative;width:100%;aspect-ratio:9/16;max-height:min(62vh,640px);margin:0 auto;background:#000}
+.player:has(.drv){grid-template-columns:minmax(0,1fr);overflow:hidden}
+.drv{position:relative;width:100%;min-width:0;max-width:100%;height:min(62vh,640px);margin:0 auto;background:#000;overflow:hidden}
 .drv iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-.app.client .player .drv{max-height:max(280px,calc(100dvh - 400px))}
+.app.client .player .drv{height:max(300px,min(62vh,calc(100dvh - 400px)))}
 .mantime{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 8px 8px 14px;border-radius:14px;background:var(--fill2);font-size:14px;font-weight:600}
 .mantime input{width:84px;height:36px;border:0;border-radius:10px;background:var(--panel);text-align:center;font:600 16px var(--mono);color:var(--ink)}
 .storage{padding:14px 16px;margin-bottom:12px;display:grid;gap:8px}
