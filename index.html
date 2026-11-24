@@ -555,6 +555,8 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.pwlink{font-size:12.5px;margin-top:4px;color:var(--accent);text-decoration:none}
+#pwTxt{white-space:pre-wrap;font-size:14px}
 .pointer.right{left:auto;right:14px;transform:none;justify-items:end;animation:bobr 1s ease-in-out infinite}
 @keyframes bobr{50%{transform:translateY(8px)}}
 .player:has(.drv){grid-template-columns:minmax(0,1fr);overflow:hidden}
@@ -1247,7 +1249,7 @@ function adminClients(){
   return `<div class="head"><div><div class="label">People</div><h1>Clients</h1></div><button class="btn primary" data-addclient>Add client</button></div>
   ${cl.length?`<div class="card list">${cl.map(c=>{const vs=videos.filter(v=>v.client_id===c.id),a=vs.filter(v=>v.status==="approved").length,ch=vs.filter(v=>v.status==="changes").length,w=vs.filter(v=>v.status==="pending").length;
    return `<div class="row"><span class="avatar">${initials(c.name)}</span><span style="min-width:0"><span class="t" style="display:block">${esc(c.name)}</span><span class="s" style="display:block">${esc(c.email)}</span></span>
-     <span class="small" style="text-align:right">${vs.length} video${vs.length===1?"":"s"}<br><span style="color:var(--ok)">${a} approved</span>${ch?` · <span style="color:var(--fix)">${ch} changes</span>`:""}${w?` · <span style="color:var(--accent)">${w} waiting</span>`:""}</span></div>`}).join("")}</div>`
+     <span class="small" style="text-align:right">${vs.length} video${vs.length===1?"":"s"}<br><span style="color:var(--ok)">${a} approved</span>${ch?` · <span style="color:var(--fix)">${ch} changes</span>`:""}${w?` · <span style="color:var(--accent)">${w} waiting</span>`:""}<br><button class="link pwlink" data-pw="${c.id}">Set new password</button></span></div>`}).join("")}</div>`
    :`<div class="card empty"><b>No clients yet</b>Create a login for your first client.</div>`}`;
 }
 
@@ -1390,6 +1392,7 @@ function wire(){
   on("[data-share]",b=>shareSheet(videos.find(x=>x.id===b.dataset.share)));
   on("[data-cap]",async b=>{const v=videos.find(x=>x.id===b.dataset.cap);try{await navigator.clipboard.writeText(v.caption);toast("Caption copied ✓")}catch(e){prompt("Copy your caption:",v.caption)}});
   on("[data-posted]",async b=>{const v=videos.find(x=>x.id===b.dataset.posted);celebrate(b);const {error}=await sb.rpc("plan_post",{vid:v.id,at:v.post_at,plats:v.platforms||[],cap:v.caption||"",done:true});if(error)return toast("Couldn’t save.",true);await load();render();toast("Nice! Marked as posted 🎉")});
+  on("[data-pw]",b=>pwSheet(profiles.find(x=>x.id===b.dataset.pw)));
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
   on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);if(cmp[v.id]||vsel[v.id]&&vsel[v.id]!==v.version){cmp[v.id]=false;delete vsel[v.id];render()}const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
     $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid);
@@ -1605,6 +1608,20 @@ function bigFileHelp(file){const mb=(file.size/1048576).toFixed(0);
   if(m){m.className="msg";m.innerHTML=html}else toast("File is "+mb+" MB. Limit is 50 MB.",true)}
 function driveId(u){const m=String(u||"").match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/);return m?m[1]:null}
 function finalHref(v){const f=v.final_link&&/^https:/i.test(v.final_link)?v.final_link:"";if(!f)return "";const id=driveId(f);return id?"https://drive.google.com/uc?export=download&id="+id:f}
+function pwSheet(c){if(!c)return;
+  const gen=()=>{const w=["sun","star","blue","gold","river","light","peace","grace","hope","joy"];const a=w[Math.floor(Math.random()*w.length)],b=w[Math.floor(Math.random()*w.length)];return a+"-"+b+"-"+(100+Math.floor(Math.random()*900))};
+  openSheet(`<div class="rc-head"><div style="min-width:0"><div class="label">Client login</div><h2>${esc(c.name||"Client")}</h2><div class="rc-sub">${esc(c.email||"")}</div></div><button type="button" class="iconx" id="pwX" aria-label="Close">✕</button></div>
+    <p class="small muted" style="margin:0">Passwords are stored scrambled, so nobody can see the old one. Set a new one here and send it to the client.</p>
+    <div class="field"><label for="pwNew">New password</label><div style="display:flex;gap:8px"><input class="input" id="pwNew" type="text" autocomplete="off" value="${gen()}"><button type="button" class="btn" id="pwGen" style="flex:none">New</button></div></div>
+    <button class="btn primary lg" id="pwGo">Save new password</button><div class="msg" id="pwMsg"></div>
+    <div id="pwDone" hidden class="note-from"><div class="label">Send this to ${esc((c.name||"").split(" ")[0]||"the client")}</div><p id="pwTxt"></p><button class="btn sm" id="pwCopy" style="margin-top:8px">Copy message</button></div>`,
+  ()=>{$("#pwX").onclick=closeSheet;$("#pwGen").onclick=()=>{$("#pwNew").value=gen()};
+    $("#pwGo").onclick=async()=>{const pw=$("#pwNew").value.trim(),m=$("#pwMsg");m.className="msg";if(pw.length<6){m.textContent="Use at least 6 characters.";return}
+      $("#pwGo").disabled=true;const {error}=await sb.rpc("admin_set_password",{uid:c.id,pw});$("#pwGo").disabled=false;
+      if(error){m.textContent=error.message;return}
+      const txt=`Hi ${(c.name||"").split(" ")[0]||""}! Your Review Room login:\n${location.origin+location.pathname}\nEmail: ${c.email}\nPassword: ${pw}\n\nYou can change it anytime under Account → Change password.`;
+      $("#pwTxt").textContent=txt;$("#pwDone").hidden=false;$("#pwGo").textContent="Saved ✓";m.className="msg good";m.textContent="Password changed. The old one no longer works.";
+      $("#pwCopy").onclick=async()=>{try{await navigator.clipboard.writeText(txt);toast("Copied ✓")}catch(e){prompt("Copy:",txt)}}}})}
 function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
   const rc=el.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,cols=["#22c55e","#3b6cff","#facc15","#f97316","#c084fc"];
   for(let i=0;i<28;i++){const d=document.createElement("i");d.className="confetti";const a=Math.random()*Math.PI*2,sp=80+Math.random()*140;
