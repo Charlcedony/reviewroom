@@ -459,7 +459,11 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.022em}
 .form h2{font-size:34px}
 .player video{max-height:min(60vh,600px)}
 .app.client .player video{max-height:max(280px,min(62vh,calc(100dvh - 400px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))))}
-.app.client .dock{margin:10px 12px 0}
+.app.client .dock{position:relative;bottom:auto;margin:10px 12px 0}
+.vhead h3{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25}
+.note p.clamp{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.more{border:0;background:none;padding:0;color:var(--accent);font-weight:600;font-size:14px;justify-self:start}
+.ptag.late{background:rgba(255,59,48,.9)}
 body.composing .app.client .player video,body.composing .player video{max-height:30vh}
 .dock{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px;padding:8px;border-radius:20px;background:var(--mat);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);box-shadow:0 8px 30px rgba(0,0,0,.25),inset 0 0 0 .5px var(--mat-line)}
 .dock .btn{min-height:50px;border-radius:14px;font-size:16px}
@@ -748,7 +752,7 @@ function cmpBtn(v){const o=versions.filter(x=>x.video_id===v.id).slice(-1)[0];if
 function playerHtml(v){if(cmp[v.id])return cmpHtml(v);const sel=vsel[v.id];if(sel&&sel!==v.version){const o=versions.find(x=>x.video_id===v.id&&x.version===sel);const ou=o&&vurls[o.id];
     return `<div class="player old">${ou?`<video data-oldid="${o.id}" controls playsinline preload="metadata" src="${esc(ou)}#t=0.1"></video>`:`<div class="ext"><span class="small">Loading version ${sel}…</span></div>`}<span class="ptag">Older version ${sel}</span></div>`}
   const u=urls[v.id];const safeLink=/^https:\/\//i.test(v.link||"")?v.link:"";
-  return `<div class="player">${u?`<span class="ptag">v${v.version}${v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
+  return `<div class="player">${u?`<span class="ptag ${v.due_date&&v.status==="pending"&&/^Was due/.test(dueTxt(v.due_date))?"late":""}">v${v.version}${v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
     :v.storage_path?`<div class="ext"><span class="small">The video couldn’t load.</span><button class="btn sm" onclick="load().then(()=>render())">Try again</button></div>`
     :safeLink?`<div class="ext"><span class="small">This video opens in a new tab</span><a href="${esc(safeLink)}" target="_blank" rel="noopener">Watch the video</a></div>`
     :`<div class="ext"><span class="small">No video attached yet.</span></div>`}</div>`}
@@ -763,7 +767,7 @@ function noteHtml(n,admin){
   const status=asking?"":n.client_check==="still"?`<span class="chip changes" style="height:22px">${admin?"Client: still wrong":"You said: still wrong"}</span>`:n.client_check==="fixed"&&admin?`<span class="chip approved" style="height:22px">Client: fixed ✓</span>`:n.done?`<span class="chip approved" style="height:22px">${fixedLbl}</span>`:"";
   return `<li class="note ${n.done&&n.client_check!=="still"?"done":""}">
     <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button>${tags}<span class="small muted">${ago(n.created_at)}</span>${status}</div>
-    ${txt&&txt!=="Voice note"&&txt!=="See the marked spot"||!n.audio_path&&!n.mark_path?`<p>${esc(txt)}</p>`:""}
+    ${txt&&txt!=="Voice note"&&txt!=="See the marked spot"||!n.audio_path&&!n.mark_path?(txt.length>260?`<p class="clamp">${esc(txt)}</p><button class="more" onclick="this.previousElementSibling.classList.toggle('clamp');this.textContent=this.textContent==='Show more'?'Show less':'Show more'">Show more</button>`:`<p>${esc(txt)}</p>`):""}
     ${n.audio_path&&aurls[n.audio_path]?`<audio controls preload="metadata" src="${esc(aurls[n.audio_path])}"></audio>`:""}
     ${n.mark_path&&aurls[n.mark_path]?`<button class="btn sm markbtn" data-mark="${n.id}">✏️ See the marked spot</button>`:""}
     ${n.reply?`<div class="reply"><b>Team reply</b>${esc(n.reply)}</div>`:""}
@@ -821,7 +825,7 @@ function changeSheet(v,vid){
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
    <div class="rc-chips" id="cats" role="group" aria-label="What kind of change">${Object.entries(CATS).map(([k,c],i)=>`<button type="button" data-k="${k}" class="${i?"":"on"}" aria-pressed="${!i}" style="--c:${c.c}">${c.ic}${c.label}</button>`).join("")}</div>
    <div class="sugg" id="sugg"></div>
-   <div class="rc-compose"><textarea id="sNote" rows="2" placeholder="Describe the change…"></textarea>
+   <div class="rc-compose"><textarea id="sNote" rows="2" maxlength="2000" placeholder="Describe the change…"></textarea>
      <div class="rc-tools">${vid?`<button type="button" class="tool" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="tool mic" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}</div></div>
    <div class="rc-att" id="markPrev" hidden></div>
    <div class="rec" id="recBox" hidden></div>
