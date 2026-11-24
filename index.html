@@ -555,6 +555,15 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.plan{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:var(--accent-soft)}
+.plan b{display:block}.plan span{display:block;font-size:13px;color:var(--muted)}
+.plan-ic{width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center;background:var(--accent);color:#fff}.plan-ic svg{width:20px;height:20px}
+.plan.posted{background:var(--ok-soft)}.plan.posted .plan-ic{background:var(--ok)}
+.plan-acts{display:flex;gap:8px;flex-wrap:wrap}.plan-acts .btn svg{width:15px;height:15px}
+.qchips,.plats{display:flex;gap:8px;flex-wrap:wrap}
+.qchips button,.plats button{border:0;border-radius:99px;height:36px;padding:0 14px;background:var(--fill2);color:var(--ink2);font:600 14px var(--font)}
+.qchips button.on,.plats button.on{background:var(--accent);color:#fff}
+.tip{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}.tip svg{width:14px;height:14px;color:var(--ok);flex:none}
 body.composing .dock{display:none}
 .crec{display:flex;align-items:center;gap:8px;padding:2px 4px 4px 0;min-width:0}
 .crec audio{flex:1;min-width:0;height:36px}
@@ -879,6 +888,7 @@ function clientVideo(v){
     :v.status==="changes"?`<div class="banner fix">We received your notes and are working on them.</div><button class="btn sm" data-change="${v.id}" style="justify-self:start">Add another note</button>`
     :`<div class="deliver"><div class="dl-ic">✓</div><div style="min-width:0;flex:1"><b>Final video ready</b><span class="small muted">v${v.version} · approved${v.updated_at?" "+ago(v.updated_at):""}</span></div>${v.storage_path?`<button class="btn primary" data-dl="${v.id}">Download</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary" href="${esc(v.link)}" target="_blank" rel="noopener">Open</a>`:""}</div>
       ${v.rating?`<div class="small muted">You rated us <span class="starsTxt">${"★".repeat(v.rating)}</span> · thank you!</div>`:`<div class="rate"><b>How was working with us on this video?</b><div class="stars">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`}
+      ${planCard(v)}
       <button class="btn ghost sm" data-undo="${v.id}" style="justify-self:start">Undo approval</button>`}
     <button class="btn ghost sm" data-msg="${v.id}" style="justify-self:start"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Message the team</button>
     ${notesByVersion(v,false)}
@@ -1020,6 +1030,7 @@ function adminOverview(){
   <div class="section"><h2>Needs your action <span class="count">${needs.length}</span></h2>${listCard(needs,"Nothing to fix right now.")}</div>
   ${(()=>{const late=waiting.filter(v=>Date.now()-new Date(v.updated_at||v.created_at)>48*3600e3);return late.length?`<div class="section"><h2>Reminders due <span class="count">${late.length}</span></h2><div class="card list">${late.map(v=>`<div class="row"><span class="thumb"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M19 3l3 3"/></svg></span><span style="min-width:0"><span class="t" style="display:block">${esc(v.title)}</span><span class="s" style="display:block">${esc(nameOf(v.client_id))} · waiting ${ago(v.updated_at||v.created_at).replace(" ago","")}</span></span><button class="btn wa sm" data-nudge="${v.id}">Remind</button></div>`).join("")}</div></div>`:""})()}
   <div class="section"><h2>Waiting on client <span class="count">${waiting.length}</span></h2>${listCard(waiting,"No videos waiting for review.")}</div>
+  ${(()=>{const soon=videos.filter(v=>v.post_at&&!v.posted&&new Date(v.post_at)>Date.now()-864e5).sort((a,b)=>new Date(a.post_at)-new Date(b.post_at));return soon.length?`<div class="section"><h2>Posting soon <span class="count">${soon.length}</span></h2><div class="card list">${soon.map(v=>`<button class="row" data-open="${v.id}"><span class="thumb">${PI.cal}</span><span style="min-width:0"><span class="t" style="display:block">${esc(v.title)}</span><span class="s" style="display:block">${esc(nameOf(v.client_id))} · ${esc(postWhen(v.post_at))}${v.platforms&&v.platforms.length?" · "+esc(v.platforms.join(", ")):""}</span></span><span></span></button>`).join("")}</div></div>`:""})()}
   <div class="section"><h2>Recently approved <span class="count">${appr.length}</span></h2>${listCard(appr.slice(0,5),"No approvals yet.")}</div>`;
 }
 function listCard(list,emptyTxt){
@@ -1044,6 +1055,7 @@ function adminVideoDetail(){
     <div class="metaline"><span class="chip ${v.status}">${ADMIN_STATUS[v.status]}</span><span class="chip plain">Version ${v.version}</span><span>${esc(nameOf(v.client_id))}</span>${v.due_date?`<span>· ${dueTxt(v.due_date)}</span>`:""}</div>
     <h3>${esc(v.title)}</h3>
     ${cmpBtn(v)}
+    ${v.post_at?`<div class="note-from"><div class="label">Client’s posting plan</div><p>${v.posted?"✓ Posted · ":""}${esc(postWhen(v.post_at))}${v.platforms&&v.platforms.length?" on "+esc(v.platforms.join(", ")):""}${v.caption?"<br><span class=small>“"+esc(v.caption)+"”</span>":""}</p></div>`:""}
     ${v.rating?`<div class="note-from"><div class="label">Client rating</div><p><span class="starsTxt">${"★".repeat(v.rating)}${"☆".repeat(5-v.rating)}</span>${v.testimonial?"<br>“"+esc(v.testimonial)+"”":""}</p></div>`:""}
     ${v.message?`<div class="note-from"><div class="label">Your message to the client</div><p>${esc(v.message)}</p></div>`:""}
     ${scrubHtml(v,vn)}
@@ -1198,6 +1210,10 @@ function wire(){
     ()=>{$("#mX").onclick=closeSheet;setTimeout(()=>$("#mTxt").focus(),300);$("#mGo").onclick=async()=>{const t=$("#mTxt").value.trim();if(!t){$("#mMsg").textContent="Type your message first.";return}
       $("#mGo").disabled=true;const {error}=await sb.from("corrections").insert({video_id:v.id,type:"clip",time_label:"Message",seconds:0,note:t,version:v.version});
       if(error){$("#mGo").disabled=false;$("#mMsg").textContent="Couldn’t send. Try again.";return}closeSheet();await load();render();toast("Message sent ✓")}})});
+  on("[data-plan]",b=>planSheet(videos.find(x=>x.id===b.dataset.plan)));
+  on("[data-ics]",b=>{const v=videos.find(x=>x.id===b.dataset.ics);const a=document.createElement("a");a.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(icsFor(v));a.download=(v.title||"post").replace(/[^\w ]+/g,"").trim()+".ics";document.body.appendChild(a);a.click();a.remove();toast("Opening your calendar…")});
+  on("[data-cap]",async b=>{const v=videos.find(x=>x.id===b.dataset.cap);try{await navigator.clipboard.writeText(v.caption);toast("Caption copied ✓")}catch(e){prompt("Copy your caption:",v.caption)}});
+  on("[data-posted]",async b=>{const v=videos.find(x=>x.id===b.dataset.posted);celebrate(b);const {error}=await sb.rpc("plan_post",{vid:v.id,at:v.post_at,plats:v.platforms||[],cap:v.caption||"",done:true});if(error)return toast("Couldn’t save.",true);await load();render();toast("Nice! Marked as posted 🎉")});
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
   on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
     $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid);
@@ -1251,6 +1267,45 @@ function fitVideo(vid){if(!vid||!document.body.classList.contains("composing")||
   const sh=$("#sheet").getBoundingClientRect().height,tp=$(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0;
   document.documentElement.style.setProperty("--vidmax",Math.max(160,innerHeight-sh-tp-20)+"px");
   setTimeout(()=>{const top=Math.max(0,vid.getBoundingClientRect().top+scrollY-tp-6);scrollTo(0,top);if(document.scrollingElement)document.scrollingElement.scrollTop=top},80)}
+const PI={cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>'};
+const PLATS=["Instagram","YouTube Shorts","Facebook","WhatsApp Status"];
+const postWhen=d=>{const t=new Date(d);return t.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+" · "+t.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
+function captionFor(v){const base=(v.title||"").replace(/\b(final|short|v\d+|with bgm|with music)\b/gi,"").replace(/\s+/g," ").trim();
+  return `${base||"New video"} ✨\n\nWatch till the end and share it with someone who needs this today.\n\n#reels #shorts #trending #viral #explore`}
+function planCard(v){
+  if(!v.post_at)return `<div class="plan"><div class="plan-ic">${PI.cal}</div><div style="flex:1;min-width:0"><b>Plan your post</b><span>Pick a time, get a reminder and a ready caption.</span></div><button class="btn primary sm" data-plan="${v.id}">Plan</button></div>`;
+  const past=new Date(v.post_at)<Date.now();
+  return `<div class="plan planned ${v.posted?"posted":""}"><div class="plan-ic">${v.posted?PI.check:PI.cal}</div><div style="flex:1;min-width:0"><b>${v.posted?"Posted":past?"Time to post!":"Posting "+esc(postWhen(v.post_at))}</b><span>${v.posted?esc(postWhen(v.post_at)):""}${v.platforms&&v.platforms.length?(v.posted?" · ":"")+esc(v.platforms.join(" · ")):""}</span></div><button class="btn ghost sm" data-plan="${v.id}">Edit</button></div>
+    ${v.posted?"":`<div class="plan-acts"><button class="btn sm" data-ics="${v.id}">${PI.cal}Add to calendar</button>${v.caption?`<button class="btn sm" data-cap="${v.id}">${PI.copy}Copy caption</button>`:""}<button class="btn sm ok" data-posted="${v.id}">${PI.check}Mark posted</button></div>`}`}
+function planSheet(v){
+  const d0=v.post_at?new Date(v.post_at):null;const pad=n=>String(n).padStart(2,"0");
+  const local=t=>`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  const at=(days,h)=>{const t=new Date();t.setDate(t.getDate()+days);t.setHours(h,0,0,0);return t};
+  const quick=[["Today 7 PM",at(0,19)],["Tomorrow 12 PM",at(1,12)],["Tomorrow 7 PM",at(1,19)]].filter(([,t])=>t>Date.now());
+  const sel=new Set(v.platforms||["Instagram"]);
+  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Plan your post</h2><div class="rc-sub">${esc(v.title)}</div></div><button type="button" class="iconx" id="pX" aria-label="Close">✕</button></div>
+    <div class="field"><label>When?</label><div class="qchips">${quick.map(([l,t])=>`<button type="button" data-t="${local(t)}">${l}</button>`).join("")}</div>
+      <input class="input" type="datetime-local" id="pAt" value="${d0?local(d0):""}">
+      <div class="tip">${PI.check}Short videos usually do best <b>11 AM–1 PM</b> and <b>7–9 PM</b>.</div></div>
+    <div class="field"><label>Where?</label><div class="plats">${PLATS.map(x=>`<button type="button" class="${sel.has(x)?"on":""}" data-p="${x}">${x}</button>`).join("")}</div></div>
+    <div class="field"><label for="pCap" style="display:flex;justify-content:space-between">Caption <button type="button" class="link" id="pSug" style="font-size:13px">Suggest one</button></label><textarea class="input" id="pCap" rows="4" placeholder="Write your caption…">${esc(v.caption||"")}</textarea></div>
+    <div class="msg" id="pMsg"></div><button class="btn primary lg" id="pGo">Save plan</button>
+    ${v.post_at?`<button class="btn ghost sm" id="pDel" style="justify-self:center">Remove plan</button>`:""}`,
+  ()=>{$("#pX").onclick=closeSheet;
+    $("#sheetBody").querySelectorAll(".qchips button").forEach(b=>b.onclick=()=>{$("#pAt").value=b.dataset.t;$("#sheetBody").querySelectorAll(".qchips button").forEach(x=>x.classList.toggle("on",x===b))});
+    $("#sheetBody").querySelectorAll(".plats button").forEach(b=>b.onclick=()=>{const k=b.dataset.p;sel.has(k)?sel.delete(k):sel.add(k);b.classList.toggle("on")});
+    $("#pSug").onclick=()=>{$("#pCap").value=captionFor(v)};
+    const save=async(at,done)=>{$("#pGo").disabled=true;const {error}=await sb.rpc("plan_post",{vid:v.id,at,plats:[...sel],cap:$("#pCap").value.trim(),done});
+      if(error){$("#pGo").disabled=false;$("#pMsg").textContent="Couldn’t save. Try again.";return}closeSheet();await load();render();toast(at?"Plan saved ✓":"Plan removed")};
+    $("#pGo").onclick=()=>{const val=$("#pAt").value;if(!val){$("#pMsg").textContent="Pick a day and time.";return}if(!sel.size){$("#pMsg").textContent="Pick at least one place to post.";return}save(new Date(val).toISOString(),false)};
+    if($("#pDel"))$("#pDel").onclick=()=>save(null,false)})}
+function icsFor(v){const t=new Date(v.post_at),e=new Date(t.getTime()+15*60e3),f=x=>x.toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const esc2=x=>String(x||"").replace(/[\\,;]/g,m=>"\\"+m).replace(/\n/g,"\\n");
+  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Review Room//EN","BEGIN:VEVENT","UID:"+v.id+"@reviewroom","DTSTAMP:"+f(new Date()),"DTSTART:"+f(t),"DTEND:"+f(e),
+    "SUMMARY:"+esc2("Post: "+v.title),"DESCRIPTION:"+esc2((v.platforms||[]).join(", ")+(v.caption?"\n\n"+v.caption:"")+"\n\n"+shareLink(v)),
+    "BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY","DESCRIPTION:Time to post","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n")}
 function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
   const rc=el.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,cols=["#22c55e","#3b6cff","#facc15","#f97316","#c084fc"];
   for(let i=0;i<28;i++){const d=document.createElement("i");d.className="confetti";const a=Math.random()*Math.PI*2,sp=80+Math.random()*140;
