@@ -464,7 +464,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.022em}
 .note p.clamp{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;padding:0;color:var(--accent);font-weight:600;font-size:14px;justify-self:start}
 .ptag.late{background:rgba(255,59,48,.9)}
-body.composing .app.client .player video,body.composing .player video{max-height:30vh}
+body.composing .app.client .player video,body.composing .player video{max-height:var(--vidmax,30vh)}
 .dock{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px;padding:8px;border-radius:20px;background:var(--mat);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);box-shadow:0 8px 30px rgba(0,0,0,.25),inset 0 0 0 .5px var(--mat-line)}
 .dock .btn{min-height:50px;border-radius:14px;font-size:16px}
 .dock .btn.fix{background:var(--fill);color:var(--ink)}
@@ -529,7 +529,8 @@ body.composing .dock{visibility:hidden}
 .tool.on{background:#ff3b30;color:#fff}
 .rc-att{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,#ff3b30 10%,transparent);font-size:14px;font-weight:600}
 .rc-dot{width:8px;height:8px;border-radius:50%;background:#ff3b30}
-.sheet.half .sugg{margin:-4px -20px 0}
+.sheet.half .sugg{margin:-4px 0 0;flex-wrap:wrap;overflow:visible;padding:0}
+.sheet.half .sugg button{padding:6px 11px;font-size:13px}
 .sheet.typing .rc-time,.sheet.typing #sugg{display:none}
 .drawer{position:fixed;inset:0;z-index:120;background:#000;display:grid;grid-template-rows:auto 1fr auto;opacity:0;transition:opacity .25s;color:#fff}
 .drawer.show{opacity:1}
@@ -543,6 +544,18 @@ body.composing .dock{visibility:hidden}
 .dr-stage video{width:100%;height:100%;object-fit:contain;pointer-events:none;display:block}
 .dr-stage canvas{position:absolute;touch-action:none;cursor:crosshair}
 .dr-hint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);padding:8px 14px;border-radius:99px;background:rgba(0,0,0,.6);font-size:13px;font-weight:600;pointer-events:none}
+.undobar{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:90;transform:translate(-50%,30px);opacity:0;display:flex;align-items:center;gap:16px;padding:10px 10px 10px 18px;border-radius:99px;background:#1c1c1e;color:#fff;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:transform .45s var(--spring),opacity .25s;overflow:hidden;white-space:nowrap}
+.undobar.show{transform:translate(-50%,0);opacity:1}
+.undobar button{border:0;border-radius:99px;background:rgba(255,255,255,.16);color:#0a84ff;font-weight:700;padding:8px 16px;font-size:15px}
+.undobar i{position:absolute;left:0;bottom:0;height:3px;background:#0a84ff;animation:undoT 6s linear forwards}
+@keyframes undoT{from{width:100%}to{width:0}}
+.pickhint{display:none;font-size:13px;font-weight:700;color:var(--accent);animation:float 1.6s ease-in-out infinite}
+.needpick .pickhint{display:block}
+.needpick .tscrub input::-webkit-slider-thumb{box-shadow:0 0 0 6px var(--accent-soft),0 6px 13px rgba(0,0,0,.12)}
+.sheet.half{padding-bottom:0}
+.sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.danger{color:#ff3b30!important}
+.hello h1{font-size:24px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -643,7 +656,7 @@ let cmp={};
 let me=null,profiles=[],videos=[],notes=[],versions=[],vsel={},urls={},view="",ctab="review",vfilter="all",openVideo=null,recovering=false,channel=null;
 const isAdmin=()=>me&&me.role==="admin";
 const nameOf=id=>(profiles.find(p=>p.id===id)||{}).name||"Client";
-const openNotes=v=>notes.filter(n=>n.video_id===v.id&&!n.done);
+const openNotes=v=>notes.filter(n=>n.video_id===v.id&&!n.done&&(n.version>=v.version||n.client_check==="still"||n.time_label==="Message"));
 
 // ================= auth =================
 $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();
@@ -752,7 +765,7 @@ function cmpBtn(v){const o=versions.filter(x=>x.video_id===v.id).slice(-1)[0];if
 function playerHtml(v){if(cmp[v.id])return cmpHtml(v);const sel=vsel[v.id];if(sel&&sel!==v.version){const o=versions.find(x=>x.video_id===v.id&&x.version===sel);const ou=o&&vurls[o.id];
     return `<div class="player old">${ou?`<video data-oldid="${o.id}" controls playsinline preload="metadata" src="${esc(ou)}#t=0.1"></video>`:`<div class="ext"><span class="small">Loading version ${sel}…</span></div>`}<span class="ptag">Older version ${sel}</span></div>`}
   const u=urls[v.id];const safeLink=/^https:\/\//i.test(v.link||"")?v.link:"";
-  return `<div class="player">${u?`<span class="ptag ${v.due_date&&v.status==="pending"&&/^Was due/.test(dueTxt(v.due_date))?"late":""}">v${v.version}${v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
+  return `<div class="player">${u?`<span class="ptag ${isAdmin()&&v.due_date&&v.status==="pending"&&/^Was due/.test(dueTxt(v.due_date))?"late":""}">v${v.version}${isAdmin()&&v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
     :v.storage_path?`<div class="ext"><span class="small">The video couldn’t load.</span><button class="btn sm" onclick="load().then(()=>render())">Try again</button></div>`
     :safeLink?`<div class="ext"><span class="small">This video opens in a new tab</span><a href="${esc(safeLink)}" target="_blank" rel="noopener">Watch the video</a></div>`
     :`<div class="ext"><span class="small">No video attached yet.</span></div>`}</div>`}
@@ -763,7 +776,7 @@ function noteHtml(n,admin){
   const m=txt.match(/^\[([^\]]+)\]\s*/);if(m){const labs=m[1].split("+").map(x=>x.trim().toLowerCase());keys=Object.keys(CATS).filter(k=>labs.includes(CATS[k].label.toLowerCase()));if(!keys.length)keys=[n.type];txt=txt.slice(m[0].length)}
   const tags="";
   const fixedLbl=vv&&vv.version>n.version?"Fixed in v"+vv.version:"Done";
-  const asking=!admin&&vv&&vv.status==="pending"&&vv.version>n.version;
+  const asking=!admin&&n.done&&vv&&vv.status==="pending"&&vv.version>n.version;
   const status=asking?"":n.client_check==="still"?`<span class="chip changes" style="height:22px">${admin?"Client: still wrong":"You said: still wrong"}</span>`:n.client_check==="fixed"&&admin?`<span class="chip approved" style="height:22px">Client: fixed ✓</span>`:n.done?`<span class="chip approved" style="height:22px">${fixedLbl}</span>`:"";
   return `<li class="note ${n.done&&n.client_check!=="still"?"done":""}">
     <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button>${tags}<span class="small muted">${ago(n.created_at)}</span>${status}</div>
@@ -785,9 +798,9 @@ function clientHome(){
   const g={review:videos.filter(v=>v.status==="pending"),changes:videos.filter(v=>v.status==="changes"),approved:videos.filter(v=>v.status==="approved")};
   if(!g[ctab].length){ctab=g.review.length?"review":g.changes.length?"changes":"approved"}
   const first=((n)=>n?n[0].toUpperCase()+n.slice(1):"there")((me.name||"").split(" ")[0]);
-  const headline=!videos.length?`Welcome, ${esc(first)}`:g.review.length?`${g.review.length} video${g.review.length>1?"s":""} ready for your review`:`You’re all caught up, ${esc(first)}`;
+  const headline=!videos.length?`Welcome, ${esc(first)}`:g.review.length?`Hi ${esc(first)}, ${g.review.length} to review`:`You’re all caught up, ${esc(first)}`;
   const sub=!videos.length?"Your videos will appear here as soon as they’re ready.":g.review.length?"Watch each one, then approve it or request changes.":g.changes.length?"We’re working on the changes you asked for. You’ll see the new version here.":"Every video has been approved. Thank you!";
-  return `<div class="hello"><div class="label">Hi ${esc(first)}</div><h1>${headline}</h1><p class="muted" style="margin:6px 0 0">${sub}</p></div>
+  return `<div class="hello"><h1>${headline}</h1><p class="muted" style="margin:6px 0 0">${sub}</p></div>
   ${videos.length?`<div class="summary">
     <button data-ctab="review" class="${ctab==="review"?"on":""}"><span class="n">${g.review.length}</span><span class="l">To review</span></button>
     <button data-ctab="changes" class="${ctab==="changes"?"on":""}"><span class="n">${g.changes.length}</span><span class="l">In progress</span></button>
@@ -797,10 +810,11 @@ function clientHome(){
 function clientVideo(v){
   const vn=notes.filter(n=>n.video_id===v.id);
   return `<article class="card video rise">
-   <header class="vhead"><div style="min-width:0"><h3>${esc(v.title)}</h3><div class="vsub"><span class="dotc ${v.status}"></span>${CLIENT_STATUS[v.status]} · Updated ${ago(v.updated_at||v.created_at)}</div></div>${versionBar(v)}</header>
+   <header class="vhead"><div style="min-width:0"><h3>${esc(v.title)}</h3><div class="vsub"><span class="dotc ${v.status}"></span>${CLIENT_STATUS[v.status]}${v.status==="pending"&&v.due_date&&!/^Was due/.test(dueTxt(v.due_date))?" · Please review "+dueTxt(v.due_date).replace(/^Due /,"").replace(/^(\d|[A-Z][a-z]{2} )/,"by $1"):" · Updated "+ago(v.updated_at||v.created_at)}</div></div></header>
    ${playerHtml(v)}
    ${v.status==="pending"?`<div class="dock"><button class="btn fix lg" data-change="${v.id}">Request changes</button><button class="btn ok lg" data-approve="${v.id}">Approve</button></div>`:""}
    <div class="vbody">
+    ${(()=>{const fx=v.status==="pending"?vn.filter(n=>n.done&&n.version<v.version&&!n.client_check).length:0;return fx?`<div class="banner ok">We made ${fx} change${fx>1?"s":""} you asked for. Please check ${fx>1?"them":"it"} below.</div>`:""})()}
     ${cmpBtn(v)}
     ${v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:""}
     ${scrubHtml(v,vn)}
@@ -809,6 +823,7 @@ function clientVideo(v){
     :`<div class="deliver"><div class="dl-ic">✓</div><div style="min-width:0;flex:1"><b>Final video ready</b><span class="small muted">v${v.version} · approved${v.updated_at?" "+ago(v.updated_at):""}</span></div>${v.storage_path?`<button class="btn primary" data-dl="${v.id}">Download</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary" href="${esc(v.link)}" target="_blank" rel="noopener">Open</a>`:""}</div>
       ${v.rating?`<div class="small muted">You rated us <span class="starsTxt">${"★".repeat(v.rating)}</span> · thank you!</div>`:`<div class="rate"><b>How was working with us on this video?</b><div class="stars">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`}
       <button class="btn ghost sm" data-undo="${v.id}" style="justify-self:start">Undo approval</button>`}
+    <button class="btn ghost sm" data-msg="${v.id}" style="justify-self:start">💬 Message the team</button>
     ${notesByVersion(v,false)}
    </div></article>`;
 }
@@ -821,7 +836,7 @@ function changeSheet(v,vid){
   const pen='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   const mic='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>';
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>What needs changing?</h2><div class="rc-sub">${esc(v.title)} <span class="sentpill" id="sCount" hidden></span></div></div><button type="button" class="iconx" id="sClose" aria-label="Close">✕</button></div>
-   ${vid?`<div class="rc-time" id="frameBox"><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
+   ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint">👆 Drag to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
    <div class="sugg" id="sugg"></div>
    <div class="rc-compose"><textarea id="sNote" rows="2" maxlength="2000" placeholder="Describe the change…"></textarea>
@@ -829,11 +844,12 @@ function changeSheet(v,vid){
    <div class="rc-att" id="markPrev" hidden></div>
    <div class="rec" id="recBox" hidden></div>
    <div class="sendrow" id="sendRow"><button class="btn lg" id="sDone" hidden>Done</button><button class="btn primary lg" id="sSend">Send note</button></div><div class="msg" id="sMsg"></div>`,
-  ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=dur||99999;
+  ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=dur||99999;let picked=!vid||vid.currentTime>=1;let warned=false;
+    const pickUI=()=>{const f=$("#frameBox");if(f)f.classList.toggle("needpick",!picked)};
     const paint=()=>{if(!vid)return;$("#sTime").textContent=fmt(secs);const rg=$("#sRange");rg.value=secs;rg.style.setProperty("--p",(secs/(+rg.max||1)*100)+"%")};
-    const setT=s=>{secs=Math.max(0,Math.min(max,s));paint();if(vid){vid.pause();vid.currentTime=secs}};
-    if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);paint()};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
-      $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);paint()}
+    const setT=s=>{secs=Math.max(0,Math.min(max,s));picked=true;pickUI();paint();if(vid){vid.pause();vid.currentTime=secs}};
+    if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);if(vid.currentTime>=1){picked=true;pickUI()}paint()};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
+      $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);paint();pickUI()}
     const fillSugg=()=>{$("#sugg").innerHTML=["Remove this part","Make it shorter","Spelling mistake","Change the wording","Different picture","Too fast","Music too loud","Add our logo"].map(t=>`<button type="button">${esc(t)}</button>`).join("")};
     $("#sugg").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ta=$("#sNote");ta.value=ta.value.trim()?ta.value.trim()+". "+b.textContent:b.textContent;ta.focus()};
     const sh=$("#sheet"),ta0=$("#sNote");
@@ -897,6 +913,7 @@ function changeSheet(v,vid){
     // ---- send ----
     $("#sSend").onclick=async()=>{if(mr&&mr.state==="recording"){$("#sMsg").textContent="Stop the recording first.";return}
       let note=$("#sNote").value.trim();if(!note&&markBlob&&!blob)note="See the marked spot";if(!note&&!blob){$("#sMsg").textContent="Type a note, record your voice, or draw on the video.";$("#sNote").focus();return}
+      if(!picked&&!warned){warned=true;$("#sMsg").textContent="Is this about 0:00? Drag the slider to the right moment, or tap Send again.";const f=$("#frameBox");f&&f.scrollIntoView({block:"nearest"});return}
       if(!note)note="Voice note";
       const type="clip";
       const whole=!vid;if(whole)secs=0;
@@ -921,13 +938,17 @@ function changeSheet(v,vid){
 function accountSheet(){
   openSheet(`<div><div class="label">Account</div><h2>${esc(me.name||"You")}</h2><p class="muted" style="margin:4px 0 0">${esc(me.email)}</p></div>
    <div class="card" style="padding:14px"><b>Use it like an app</b><p class="small muted" style="margin:6px 0 0">iPhone: open this site in Safari, tap Share, then “Add to Home Screen”.<br>Android: tap “Install”, or the browser menu → “Install app”.<br>You’ll stay signed in on this device.</p></div>
-   <button class="btn lg block" id="sOut">Sign out</button>`,()=>{$("#sOut").onclick=signOut});
+   <details class="card" style="padding:14px"><summary style="font-weight:600;cursor:pointer">Change password</summary>
+     <div style="display:grid;gap:10px;margin-top:12px"><input class="input" id="np1" type="password" autocomplete="new-password" placeholder="New password (6+ characters)"><input class="input" id="np2" type="password" autocomplete="new-password" placeholder="Type it again"><button class="btn primary" id="npGo">Save new password</button><div class="msg" id="npMsg"></div></div></details>
+   <button class="btn lg block" id="sOut">Sign out</button>`,()=>{$("#sOut").onclick=signOut;
+     $("#npGo").onclick=async()=>{const a=$("#np1").value,b=$("#np2").value,m=$("#npMsg");m.className="msg";if(a.length<6){m.textContent="Use at least 6 characters.";return}if(a!==b){m.textContent="The passwords don’t match.";return}
+       $("#npGo").disabled=true;const {error}=await sb.auth.updateUser({password:a});$("#npGo").disabled=false;if(error){m.textContent=error.message;return}m.className="msg good";m.textContent="Password changed ✓";$("#np1").value=$("#np2").value=""}});
 }
 
 // ================= ADMIN =================
 function adminOverview(){
   const needs=videos.filter(v=>v.status==="changes"),waiting=videos.filter(v=>v.status==="pending"),appr=videos.filter(v=>v.status==="approved");
-  const openCount=notes.filter(n=>!n.done).length;
+  const openCount=videos.reduce((a,v)=>a+openNotes(v).length,0);
   const h=new Date().getHours(),greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
   return `<div class="head"><div><div class="label">${new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</div><h1>${greet}</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-addclient>Add client</button><button class="btn primary" data-newvideo>Send video for review</button></div></div>
@@ -970,9 +991,10 @@ function adminVideoDetail(){
       <button class="btn wa" data-wa="${v.id}"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.3z"/></svg>Share on WhatsApp</button>
       <button class="btn" data-copylink="${v.id}">Copy link</button>
       <button class="btn" data-edit="${v.id}">Edit details</button>
-      <button class="btn ghost" data-remove="${v.id}">Delete</button></div>
+</div>
     ${v.status==="changes"&&!o?`<div class="banner ok">All notes are done. Upload the new version to send it back.</div>`:""}
     ${vn.length?notesByVersion(v,true):`<div class="small muted">No notes from the client yet.</div>`}
+    <button class="btn ghost sm danger" data-remove="${v.id}" style="justify-self:end;margin-top:8px">Delete this video</button>
    </div></article>`;
 }
 function adminClients(){
@@ -1088,7 +1110,7 @@ function wire(){
         $("#wWeb").onclick=()=>window.open("https://web.whatsapp.com/send?text="+enc,"_blank","noopener");
         $("#wCopy").onclick=async()=>{try{await navigator.clipboard.writeText(txt);toast("Message copied. Paste it in WhatsApp.")}catch(e){prompt("Copy this message:",txt)}}})});
   on("[data-copylink]",async b=>{const v=videos.find(x=>x.id===b.dataset.copylink);try{await navigator.clipboard.writeText(shareLink(v));toast("Link copied")}catch(e){prompt("Copy this link:",shareLink(v))}});
-  on("[data-approve]",b=>{celebrate(b);setStatus(b.dataset.approve,"approved","Approved. Thank you!")});
+  on("[data-approve]",async b=>{celebrate(b);const id=b.dataset.approve;await setStatus(id,"approved","");undoBar("Approved. Thank you!",()=>setStatus(id,"pending","Moved back to review"))});
   on("[data-vsel]",async b=>{const id=b.dataset.vsel,ver=+b.dataset.ver,v=videos.find(x=>x.id===id);vsel[id]=ver;
     const o=versions.find(x=>x.video_id===id&&x.version===ver);
     if(o&&ver!==v.version&&!vurls[o.id]){render();if(o.storage_path){const {data}=await sb.storage.from("videos").createSignedUrl(o.storage_path,60*60*6);if(data)vurls[o.id]=data.signedUrl}else if(o.link&&/^https:/i.test(o.link)){window.open(o.link,"_blank","noopener")}}
@@ -1108,9 +1130,18 @@ function wire(){
   on("[data-star]",b=>rateSheet(videos.find(x=>x.id===b.dataset.rv),+b.dataset.star));
   on("[data-nudge]",b=>{const v=videos.find(x=>x.id===b.dataset.nudge);const c=profiles.find(x=>x.id===v.client_id);const first=((c&&c.name)||"").split(" ")[0];
     waOpen(`Hi${first?" "+first:""}! Just a gentle reminder 🙂 “${v.title}” is waiting for your review. It only takes a minute:\n${shareLink(v)}`,v.title)});
+  on("[data-msg]",b=>{const v=videos.find(x=>x.id===b.dataset.msg);
+    openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Message the team</h2><div class="rc-sub">${esc(v.title)}</div></div><button type="button" class="iconx" id="mX" aria-label="Close">✕</button></div>
+      <div class="rc-compose"><textarea id="mTxt" rows="3" maxlength="2000" placeholder="e.g. Can we also get a 16:9 version?"></textarea></div>
+      <button class="btn primary lg" id="mGo">Send message</button><div class="msg" id="mMsg"></div>`,
+    ()=>{$("#mX").onclick=closeSheet;setTimeout(()=>$("#mTxt").focus(),300);$("#mGo").onclick=async()=>{const t=$("#mTxt").value.trim();if(!t){$("#mMsg").textContent="Type your message first.";return}
+      $("#mGo").disabled=true;const {error}=await sb.from("corrections").insert({video_id:v.id,type:"clip",time_label:"Message",seconds:0,note:t,version:v.version});
+      if(error){$("#mGo").disabled=false;$("#mMsg").textContent="Couldn’t send. Try again.";return}closeSheet();await load();render();toast("Message sent ✓")}})});
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
   on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
-    $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid)});
+    $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid);
+    if(vid)setTimeout(()=>{const sh=$("#sheet").getBoundingClientRect().height,tp=$(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0;
+      document.documentElement.style.setProperty("--vidmax",Math.max(160,innerHeight-sh-tp-20)+"px");setTimeout(()=>{const top=vid.getBoundingClientRect().top+scrollY-tp-6;scrollTo({top,behavior:"instant"})},60)},300)});
   on("[data-ctab]",b=>{ctab=b.dataset.ctab;render()});
   on("[data-vf]",b=>{vfilter=b.dataset.vf;render()});
   on("[data-open]",b=>{openVideo=b.dataset.open;render();scrollTo(0,0)});
@@ -1144,13 +1175,16 @@ function welcomeSheet(){const first=((me.name||"").split(" ")[0]||"there");
   openSheet(`<div><div class="label">Welcome</div><h2>Hi ${esc(first[0].toUpperCase()+first.slice(1))}, this is your review room</h2></div>
     <ol class="steps"><li>Watch each video when it’s ready. We’ll send you the link.</li><li>Love it? Tap <b>Approve</b>. That’s it.</li><li>Something to fix? Pause there, tap <b>Request changes</b>, then type, talk, or draw on the video.</li></ol>
     <button class="btn primary lg" id="wGo">Got it</button>`,()=>{$("#wGo").onclick=closeSheet})}
+function undoBar(msg,fn){document.querySelectorAll(".undobar").forEach(x=>x.remove());const el=document.createElement("div");el.className="undobar";
+  el.innerHTML=`<span>${esc(msg)}</span><button type="button">Undo</button><i></i>`;document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add("show"));
+  const kill=()=>{el.classList.remove("show");setTimeout(()=>el.remove(),300)};const t=setTimeout(kill,6000);el.querySelector("button").onclick=()=>{clearTimeout(t);kill();fn()}}
 function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
   const rc=el.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,cols=["#22c55e","#3b6cff","#facc15","#f97316","#c084fc"];
   for(let i=0;i<28;i++){const d=document.createElement("i");d.className="confetti";const a=Math.random()*Math.PI*2,sp=80+Math.random()*140;
     d.style.cssText=`left:${cx}px;top:${cy}px;background:${cols[i%5]};--dx:${Math.cos(a)*sp}px;--dy:${Math.sin(a)*sp-120}px;--rot:${Math.random()*720}deg`;
     document.body.appendChild(d);setTimeout(()=>d.remove(),1100)}}
 async function setStatus(id,s,msg){const {error}=await sb.rpc("set_video_status",{vid:id,new_status:s});if(error)return toast("Couldn’t save. Check your connection.",true);
-  if(!isAdmin())ctab=s==="approved"?"approved":"review";await load();render();toast(msg)}
+  if(!isAdmin())ctab=s==="approved"?"approved":"review";await load();render();if(msg)toast(msg)}
 
 // ================= sheet =================
 let lastFocus=null;
