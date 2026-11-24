@@ -555,6 +555,9 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.pchip.mark{background:var(--panel);color:var(--ink2)}
+.pchip .ring{width:14px;height:14px;border-radius:50%;border:1.8px solid var(--muted);flex:none}
+.pchip.mark:active .ring{background:var(--ok);border-color:var(--ok)}
 .shsteps{margin:0;padding:0;list-style:none;counter-reset:sh;display:grid;gap:8px}
 .shsteps li{counter-increment:sh;display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:var(--fill2)}
 .shsteps li::before{content:counter(sh);flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
@@ -1415,7 +1418,7 @@ function planCard(v){
   const past=new Date(v.post_at)<Date.now();
   const title=v.posted?"Posted":past?"Time to post!":postShort(v.post_at);
   return `<div class="pbox"><button class="prow" data-plan="${v.id}"><span class="pi ${v.posted?"green":past?"orange":"blue"}">${v.posted?PI.check:PI.cal}</span><span class="pt"><b>${esc(title)}</b><small>${v.posted?esc(postShort(v.post_at))+" · ":""}${esc((v.platforms||[]).join(", "))}</small></span><span class="chev">›</span></button>
-    ${v.posted?"":`<div class="pacts">${v.caption?`<button class="pchip" data-cap="${v.id}">${PI.copy}Caption</button>`:""}<button class="pchip" data-share="${v.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button><button class="pchip ok" data-posted="${v.id}">${PI.check}Posted</button></div>`}</div>`}
+    ${v.posted?"":`<div class="pacts">${v.caption?`<button class="pchip" data-cap="${v.id}">${PI.copy}Caption</button>`:""}<button class="pchip" data-share="${v.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button><button class="pchip mark" data-posted="${v.id}"><span class="ring"></span>Mark posted</button></div>`}</div>`}
 function planSheet(v){
   const d0=v.post_at?new Date(v.post_at):null;const pad=n=>String(n).padStart(2,"0");
   const local=t=>`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
