@@ -458,6 +458,8 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.022em}
 .logo i{border-radius:8px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 80%,#fff),var(--accent))}
 .form h2{font-size:34px}
 .player video{max-height:min(60vh,600px)}
+.app.client .player video{max-height:min(62vh,calc(100dvh - 290px))}
+.app.client .dock{position:relative;bottom:auto;margin:12px 12px 0}
 .dock{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px;padding:8px;border-radius:20px;background:var(--mat);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);box-shadow:0 8px 30px rgba(0,0,0,.25),inset 0 0 0 .5px var(--mat-line)}
 .dock .btn{min-height:50px;border-radius:14px;font-size:16px}
 .dock .btn.fix{background:var(--fill);color:var(--ink)}
@@ -484,7 +486,8 @@ body.composing .dock{visibility:hidden}
 .markcv.set{pointer-events:none;outline:none}
 .markimg{position:absolute;z-index:5;pointer-events:none;animation:rise .4s var(--spring)}
 .mstep.draw{padding:0 10px}.mstep.on{background:#ff3b30;color:#fff}
-.check{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.check .small{margin-right:auto}
+.check{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:12px;background:var(--panel)}.check .small{margin-right:auto;font-weight:600}
+.note .top2 .tag+.tag{margin-left:-4px}
 .markbtn{justify-self:start}
 .cmp{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#000}
 .cmp figure{margin:0;position:relative}.cmp video{width:100%;max-height:52vh;display:block;background:#000}
@@ -494,8 +497,8 @@ body.composing .dock{visibility:hidden}
 .deliver{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:var(--ok-soft)}
 .deliver b{display:block}.dl-ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--ok);color:#fff;font-weight:800;flex:none}
 .rate{display:grid;gap:6px;padding:14px;border-radius:18px;background:var(--fill2)}
-.stars{display:flex;gap:4px}.stars button{border:0;background:none;font-size:32px;line-height:1;color:var(--fill);padding:2px;transition:transform .3s var(--spring),color .15s}
-.stars:hover button{color:#ffcc00}.stars button:hover~button{color:var(--fill)}.stars button:active{transform:scale(1.25)}
+.stars{display:flex;gap:4px}.stars button{border:0;background:none;font-size:34px;line-height:1;color:color-mix(in srgb,#ffcc00 35%,var(--line2));padding:2px;transition:transform .3s var(--spring),color .15s}
+.stars:hover button{color:#ffcc00}.stars button:hover~button{color:color-mix(in srgb,#ffcc00 35%,var(--line2))}.stars button:active{transform:scale(1.25)}
 .starsTxt{color:#ffcc00;letter-spacing:2px}
 #magicBtn{margin-top:4px}
 .rc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -751,15 +754,19 @@ function playerHtml(v){if(cmp[v.id])return cmpHtml(v);const sel=vsel[v.id];if(se
 function scrubHtml(v,vnotes){if(!urls[v.id]||!vnotes.length)return"";
   return `<div class="small muted" style="margin-bottom:-8px">Your notes on the timeline · tap a dot to jump there</div><div class="scrub" data-scrub="${v.id}" aria-label="Video timeline with note markers"><div class="rail"></div><div class="fill"></div>${vnotes.map(n=>`<span class="mk ${n.done?"done":""}" data-t="${n.seconds}" style="--c:${CATS[n.type].c}"></span>`).join("")}</div>`}
 function noteHtml(n,admin){
-  return `<li class="note ${n.done?"done":""}">
-    <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button><span class="tag" style="--c:${CATS[n.type].c}">${CATS[n.type].label}</span>
-      <span class="small muted">${ago(n.created_at)}</span>${n.done?`<span class="chip approved" style="height:22px">${(()=>{const vv=videos.find(x=>x.id===n.video_id);return vv&&vv.version>n.version?"Fixed in v"+vv.version:"Done"})()}</span>`:""}</div>
-    ${n.client_check?`<span class="chip ${n.client_check==="fixed"?"approved":"changes"}" style="justify-self:start">${n.client_check==="fixed"?"Client checked: fixed":"Client: still wrong"}</span>`:""}
-    ${n.mark_path&&aurls[n.mark_path]?`<button class="btn sm markbtn" data-mark="${n.id}">✏️ See the marked spot</button>`:""}
-    ${(()=>{const vv=videos.find(x=>x.id===n.video_id);return !admin&&vv&&vv.status==="pending"&&vv.version>n.version?`<div class="check"><span class="small muted">Is this fixed in v${vv.version}?</span><button class="btn sm ${n.client_check==="fixed"?"ok":""}" data-check="${n.id}" data-val="fixed">✓ Fixed</button><button class="btn sm ${n.client_check==="still"?"fix":""}" data-check="${n.id}" data-val="still">Still wrong</button></div>`:""})()}
+  const vv=videos.find(x=>x.id===n.video_id);let txt=n.note||"";let keys=[n.type];
+  const m=txt.match(/^\[([^\]]+)\]\s*/);if(m){const labs=m[1].split("+").map(x=>x.trim().toLowerCase());keys=Object.keys(CATS).filter(k=>labs.includes(CATS[k].label.toLowerCase()));if(!keys.length)keys=[n.type];txt=txt.slice(m[0].length)}
+  const tags=keys.map(k=>`<span class="tag" style="--c:${CATS[k].c}">${CATS[k].label}</span>`).join("");
+  const fixedLbl=vv&&vv.version>n.version?"Fixed in v"+vv.version:"Done";
+  const asking=!admin&&vv&&vv.status==="pending"&&vv.version>n.version;
+  const status=asking?"":n.client_check==="still"?`<span class="chip changes" style="height:22px">${admin?"Client: still wrong":"You said: still wrong"}</span>`:n.client_check==="fixed"&&admin?`<span class="chip approved" style="height:22px">Client: fixed ✓</span>`:n.done?`<span class="chip approved" style="height:22px">${fixedLbl}</span>`:"";
+  return `<li class="note ${n.done&&n.client_check!=="still"?"done":""}">
+    <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button>${tags}<span class="small muted">${ago(n.created_at)}</span>${status}</div>
+    ${txt&&txt!=="Voice note"&&txt!=="See the marked spot"||!n.audio_path&&!n.mark_path?`<p>${esc(txt)}</p>`:""}
     ${n.audio_path&&aurls[n.audio_path]?`<audio controls preload="metadata" src="${esc(aurls[n.audio_path])}"></audio>`:""}
-    ${n.note&&n.note!=="Voice note"||!n.audio_path?`<p>${esc(n.note)}</p>`:""}
+    ${n.mark_path&&aurls[n.mark_path]?`<button class="btn sm markbtn" data-mark="${n.id}">✏️ See the marked spot</button>`:""}
     ${n.reply?`<div class="reply"><b>Team reply</b>${esc(n.reply)}</div>`:""}
+    ${asking?`<div class="check"><span class="small">Fixed in v${vv.version}?</span><button class="btn sm ${n.client_check==="fixed"?"ok":""}" data-check="${n.id}" data-val="fixed">${n.client_check==="fixed"?"✓ Fixed":"Yes, fixed"}</button><button class="btn sm ${n.client_check==="still"?"fix":""}" data-check="${n.id}" data-val="still">Still wrong</button></div>`:""}
     ${admin?`<div class="acts"><button class="btn sm" data-reply="${n.id}">${n.reply?"Edit reply":"Reply"}</button><button class="btn sm ${n.done?"":"ok"}" data-done="${n.id}">${n.done?"Reopen":"Mark done"}</button></div>`:""}
   </li>`}
 function notesByVersion(v,admin){
@@ -792,7 +799,7 @@ function clientVideo(v){
     ${cmpBtn(v)}
     ${v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:""}
     ${scrubHtml(v,vn)}
-    ${v.status==="pending"?`<div class="small muted">Tip: pause where something should change, then tap Request changes.</div>`
+    ${v.status==="pending"?``
     :v.status==="changes"?`<div class="banner fix">We received your notes and are working on them.</div><button class="btn sm" data-change="${v.id}" style="justify-self:start">Add another note</button>`
     :`<div class="deliver"><div class="dl-ic">✓</div><div style="min-width:0;flex:1"><b>Final video ready</b><span class="small muted">v${v.version} · approved${v.updated_at?" "+ago(v.updated_at):""}</span></div>${v.storage_path?`<button class="btn primary" data-dl="${v.id}">Download</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary" href="${esc(v.link)}" target="_blank" rel="noopener">Open</a>`:""}</div>
       ${v.rating?`<div class="small muted">You rated us <span class="starsTxt">${"★".repeat(v.rating)}</span> · thank you!</div>`:`<div class="rate"><b>How was working with us on this video?</b><div class="stars">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`}
