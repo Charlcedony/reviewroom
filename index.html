@@ -555,6 +555,12 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.storage{padding:14px 16px;margin-bottom:12px;display:grid;gap:8px}
+.st-top{display:flex;justify-content:space-between;align-items:baseline}.st-top span{font-size:13px;color:var(--muted);font-weight:600}
+.st-bar{height:8px;border-radius:99px;background:var(--fill);overflow:hidden}.st-bar i{display:block;height:100%;width:0;background:var(--ok);border-radius:99px;transition:width .6s var(--spring)}
+.st-bar i.warn{background:#ff9500}.st-bar i.bad{background:#ff3b30}
+.st-foot{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.bigfile{display:grid;gap:6px;padding:12px;border-radius:12px;background:var(--fix-soft);color:var(--ink);font-weight:500}.bigfile ol{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px}
 .shopts{display:grid;gap:8px}
 .shopt{display:flex;align-items:center;gap:12px;padding:12px;border:0;border-radius:16px;background:var(--fill2);font:inherit;color:inherit;text-align:left;box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .2s,background .2s}
 .shopt.on{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent)}
@@ -928,6 +934,22 @@ document.addEventListener("visibilitychange",async()=>{if(document.visibilitySta
 
 // ================= render =================
 let pendingRender=false;
+async function storageMeter(){const box=$("#storeBox");if(!box||!isAdmin())return;
+  const {data,error}=await sb.rpc("storage_usage");if(error||!data){box.hidden=true;return}
+  const mb=data.reduce((a,x)=>a+Number(x.mb||0),0),pct=Math.min(100,mb/1024*100);
+  $("#stTxt").textContent=mb.toFixed(0)+" MB of 1 GB";$("#stBar").style.width=pct+"%";$("#stBar").className=pct>85?"bad":pct>65?"warn":"";
+  const old=versions.filter(x=>x.storage_path&&videos.some(v=>v.id===x.video_id&&v.status==="approved"));
+  const stale=videos.filter(v=>v.share_code&&v.status==="approved"&&v.post_at&&new Date(v.post_at)<Date.now()-30*864e5);
+  const n=old.length+stale.length;const cl=$("#stClean");cl.hidden=!n;
+  $("#stHint").textContent=n?`${old.length} old version file${old.length===1?"":"s"} on approved videos can be removed`:pct>65?"Getting full: delete finished projects you no longer need":"Free plan: 1 GB";
+  cl.onclick=async()=>{if(cl.dataset.c!=="1"){cl.dataset.c="1";cl.textContent="Tap again to confirm";setTimeout(()=>{cl.dataset.c="";cl.textContent="Free up space"},3500);return}
+    cl.disabled=true;cl.textContent="Cleaning…";
+    const paths=old.map(x=>x.storage_path);if(paths.length)await sb.storage.from("videos").remove(paths);
+    if(v.share_code)await sb.storage.from("shared").remove([v.share_code+".json",...["mp4","mov","m4v","webm"].map(e=>v.share_code+"."+e)]);
+    const extra=notes.filter(n=>n.video_id===v.id).flatMap(n=>[n.audio_path,n.mark_path]).filter(Boolean);if(extra.length)await sb.storage.from("videos").remove(extra);
+    if(old.length)await sb.from("video_versions").delete().in("id",old.map(x=>x.id));
+    for(const v of stale){await sb.storage.from("shared").remove([v.share_code+".json",...["mp4","mov","m4v","webm"].map(e=>v.share_code+"."+e)]);await sb.rpc("set_share_code",{vid:v.id,code:null})}
+    await load();render();toast("Space freed ✓")}}
 function syncTopCal(){const b=$("#topCal");if(!b)return;const show=!isAdmin()&&videos.some(v=>v.status==="approved");b.hidden=!show;
   b.classList.toggle("dot",videos.some(v=>v.post_at&&!v.posted&&new Date(v.post_at)-Date.now()<864e5*2));b.onclick=calendarSheet}
 function render(fromLive){
@@ -938,7 +960,7 @@ function render(fromLive){
   const html=isAdmin()?(openVideo?adminVideoDetail():{overview:adminOverview,videos:adminVideos,clients:adminClients}[view]()):clientHome();
   $("#main").innerHTML=html;
   $("#main").querySelectorAll("video[data-id]").forEach(n=>{const old=keep[n.dataset.id];if(old&&old.getAttribute("src")===n.getAttribute("src"))n.replaceWith(old)});
-  wire();syncTopCal();
+  wire();syncTopCal();if(isAdmin()&&view==="overview"&&!openVideo)storageMeter();
 }
 function renderNav(){
   const changes=videos.filter(v=>v.status==="changes").length;
@@ -1167,6 +1189,7 @@ function adminOverview(){
   const h=new Date().getHours(),greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
   return `<div class="head"><div><div class="label">${new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</div><h1>${greet}</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-addclient>Add client</button><button class="btn primary" data-newvideo>Send video for review</button></div></div>
+  <div class="card storage" id="storeBox"><div class="st-top"><b>Storage</b><span id="stTxt">Checking…</span></div><div class="st-bar"><i id="stBar"></i></div><div class="st-foot"><span class="small muted" id="stHint">Free plan: 1 GB</span><button class="btn sm" id="stClean" hidden>Free up space</button></div></div>
   <div class="stats"><div class="card stat fix"><div class="label">Needs your action</div><div class="n">${needs.length}</div></div>
    <div class="card stat acc"><div class="label">Waiting on client</div><div class="n">${waiting.length}</div></div>
    <div class="card stat ok"><div class="label">Approved</div><div class="n">${appr.length}</div></div>
@@ -1272,6 +1295,7 @@ function wireVideoForm(v,mode){
       if(mode==="edit"){const {error}=await sb.from("videos").update({title,message,due_date}).eq("id",v.id);if(error)throw error;closeSheet();await load();render();toast("Saved");return}
       const client_id=mode==="new"?$("#fClient").value:v.client_id;
       let storage_path=null;
+      if(file&&file.size>50*1048576){b.disabled=false;b.textContent=mode==="new"?"Send for review":"Upload";bigFileHelp(file);return}
       if(file){$("#fBar").hidden=false;b.textContent="Uploading…";storage_path=`${client_id}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
         await uploadWithProgress(storage_path,file,p=>$("#fBar i").style.width=p+"%")}
       const now=new Date().toISOString();
@@ -1463,15 +1487,15 @@ function shareText(v){
   return lines.join("\n")}
 async function makeShareLink(v){
   const key="rr-share-"+v.id+"-v"+v.version;let code=null;try{code=localStorage.getItem(key)}catch(e){}
-  if(code){await sb.storage.from("shared").upload(code+".json",new Blob([JSON.stringify({t:v.title,f:code+"."+(v.storage_path.split(".").pop()||"mp4").slice(0,4),at:v.post_at||null,p:v.platforms||[],c:v.caption||"",by:"Review Room"})],{type:"application/json"}),{contentType:"application/json",upsert:true});return location.origin+location.pathname+"?s="+code}
+  if(code){await sb.storage.from("shared").upload(code+".json",new Blob([JSON.stringify({t:v.title,f:code+"."+(v.storage_path.split(".").pop()||"mp4").slice(0,4),at:v.post_at||null,p:v.platforms||[],c:v.caption||"",by:"Review Room",ts:Date.now()})],{type:"application/json"}),{contentType:"application/json",upsert:true});return location.origin+location.pathname+"?s="+code}
   code=[...crypto.getRandomValues(new Uint8Array(6))].map(b=>"abcdefghjkmnpqrstuvwxyz23456789"[b%31]).join("");
   const ext=(v.storage_path.split(".").pop()||"mp4").slice(0,4);
   let ok=false;try{const c=await sb.storage.from("videos").copy(v.storage_path,code+"."+ext,{destinationBucket:"shared"});ok=!c.error}catch(e){}
   if(!ok){const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,600);const bl=await (await fetch(data.signedUrl)).blob();
     const up=await sb.storage.from("shared").upload(code+"."+ext,bl,{contentType:bl.type||"video/mp4"});if(up.error)throw up.error}
-  const meta={t:v.title,f:code+"."+ext,at:v.post_at||null,p:v.platforms||[],c:v.caption||"",by:"Review Room"};
+  const meta={t:v.title,f:code+"."+ext,at:v.post_at||null,p:v.platforms||[],c:v.caption||"",by:"Review Room",ts:Date.now()};
   const mu=await sb.storage.from("shared").upload(code+".json",new Blob([JSON.stringify(meta)],{type:"application/json"}),{contentType:"application/json"});if(mu.error)throw mu.error;
-  try{localStorage.setItem(key,code)}catch(e){}
+  try{localStorage.setItem(key,code)}catch(e){}await sb.rpc("set_share_code",{vid:v.id,code});
   return location.origin+location.pathname+"?s="+code}
 function shareSheet(v){
   let file=null,blob=null,mode="video",tried=false;const text=shareText(v);const nm=(v.title||"video").replace(/[^\w\- ]+/g,"").trim()||"video";
@@ -1511,6 +1535,7 @@ async function showSharePage(code){
   $("#authView").hidden=true;$("#appView").hidden=true;
   const el=document.createElement("div");el.className="pubview";document.body.appendChild(el);
   if(!m){el.innerHTML=`<div class="pubcard"><div class="logo"><i></i><span>Review Room</span></div><h1>This link has expired</h1><p class="muted">Ask the sender for a new link.</p></div>`;return true}
+  if(m.ts&&Date.now()-m.ts>30*864e5){el.innerHTML=`<div class="pubcard"><div class="logo"><i></i><span>Review Room</span></div><h1>This link has expired</h1><p class="muted">Links work for 30 days. Ask the sender for a new one.</p></div>`;return true}
   const vurl=base+encodeURIComponent(m.f);const when=m.at?postWhen(m.at):"";
   el.innerHTML=`<div class="pubcard">
     <div class="logo"><i></i><span>Review Room</span></div>
@@ -1567,6 +1592,11 @@ function icsFor(v){const t=new Date(v.post_at),e=new Date(t.getTime()+15*60e3),f
   return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Review Room//EN","BEGIN:VEVENT","UID:"+v.id+"@reviewroom","DTSTAMP:"+f(new Date()),"DTSTART:"+f(t),"DTEND:"+f(e),
     "SUMMARY:"+esc2("Post: "+v.title),"DESCRIPTION:"+esc2((v.platforms||[]).join(", ")+(v.caption?"\n\n"+v.caption:"")+"\n\n"+shareLink(v)),
     "BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY","DESCRIPTION:Time to post","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n")}
+function bigFileHelp(file){const mb=(file.size/1048576).toFixed(0);
+  const m=$("#fMsg")||$("#sheetBody .msg");const html=`<div class="bigfile"><b>This file is ${mb} MB. The limit is 50 MB.</b>
+    <ol><li>Export again at <b>1080p, 8 Mbps</b> (about 1 min = 60 MB → 40 MB), or use HandBrake → preset <b>“Social 1080p”</b>.</li>
+    <li>Or upload it to Google Drive / YouTube (unlisted) and paste the link in <b>Video link</b> instead.</li></ol></div>`;
+  if(m){m.className="msg";m.innerHTML=html}else toast("File is "+mb+" MB. Limit is 50 MB.",true)}
 function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
   const rc=el.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,cols=["#22c55e","#3b6cff","#facc15","#f97316","#c084fc"];
   for(let i=0;i<28;i++){const d=document.createElement("i");d.className="confetti";const a=Math.random()*Math.PI*2,sp=80+Math.random()*140;
