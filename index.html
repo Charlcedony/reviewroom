@@ -936,7 +936,7 @@ function openDeepLink(){
   setTimeout(()=>{const el=document.querySelector(`video[data-id="${id}"]`);if(!el)return;
     const card=el.closest(".card");card&&card.classList.add("spot");setTimeout(()=>card&&card.classList.remove("spot"),2600);
     el.scrollIntoView({behavior:"smooth",block:"center"});
-    el.play().catch(()=>{el.muted=true;el.play().then(()=>toast("Tap the video to turn on sound")).catch(()=>{})})},250)}
+    },250)}
 function shareLink(v){return location.origin+location.pathname+"?watch="+v.id}
 async function boot(){
   if(recovering||/type=recovery/.test(location.hash))return;
