@@ -957,6 +957,8 @@ function openDeepLink(){
 function shareLink(v){return location.origin+location.pathname+"?watch="+v.id}
 async function boot(){
   if(recovering||/type=recovery/.test(location.hash))return;
+  {const m=location.hash.match(/^#k=([A-Za-z0-9+/_-]+)/);if(m){history.replaceState(null,"",location.pathname+location.search);
+    try{const d=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,"+").replace(/_/g,"/")))));await sb.auth.signOut().catch(()=>{});const {error}=await sb.auth.signInWithPassword({email:d.e,password:d.p});if(error)setTimeout(()=>toast("That sign-in link no longer works. Please sign in.",true),600)}catch(e){}}}
   {const sc=new URLSearchParams(location.search).get("s");if(sc&&await showSharePage(sc)){hideSplash();return}}
   const {data:{session}}=await sb.auth.getSession();
   if(!session){showAuth(false);return}
@@ -1677,7 +1679,8 @@ function pwSheet(c){if(!c)return;
     $("#pwGo").onclick=async()=>{const pw=$("#pwNew").value.trim(),m=$("#pwMsg");m.className="msg";if(pw.length<6){m.textContent="Use at least 6 characters.";return}
       $("#pwGo").disabled=true;const {error}=await sb.rpc("admin_set_password",{uid:c.id,pw});$("#pwGo").disabled=false;
       if(error){m.textContent=error.message;return}
-      const txt=`Hi ${(c.name||"").split(" ")[0]||""}! Your Review Room login:\n${location.origin+location.pathname}\nEmail: ${c.email}\nPassword: ${pw}\n\nYou can change it anytime under Account → Change password.`;
+      const auto=location.origin+location.pathname+"#k="+btoa(unescape(encodeURIComponent(JSON.stringify({e:c.email,p:pw})))).replace(/=+$/,"");
+      const txt=`Hi ${(c.name||"").split(" ")[0]||""}! Tap to open Review Room (signs you in automatically):\n${auto}\n\nOr sign in with:\nEmail: ${c.email}\nPassword: ${pw}`;
       $("#pwTxt").textContent=txt;$("#pwDone").hidden=false;$("#pwGo").textContent="Saved ✓";m.className="msg good";m.textContent="Password changed. The old one no longer works.";
       $("#pwCopy").onclick=async()=>{try{await navigator.clipboard.writeText(txt);toast("Copied ✓")}catch(e){prompt("Copy:",txt)}}}})}
 function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
