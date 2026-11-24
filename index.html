@@ -555,6 +555,12 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.rc-select{position:relative;display:block}
+.rc-select .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.rc-select select{-webkit-appearance:none;appearance:none;width:100%;height:48px;border:0;border-radius:14px;background:var(--fill2);color:var(--muted);font:600 16px var(--font);padding:0 44px 0 14px}
+.rc-select.picked select{color:var(--ink);background:var(--accent-soft)}
+.rc-select::after{content:"";position:absolute;right:18px;top:50%;width:9px;height:9px;margin-top:-7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);pointer-events:none}
+.sheet.typing .rc-select{display:none}
 #sMsg:empty{display:none}
 .hello h1{font-size:24px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -839,7 +845,7 @@ function changeSheet(v,vid){
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>What needs changing?</h2><div class="rc-sub">${esc(v.title)} <span class="sentpill" id="sCount" hidden></span></div></div><button type="button" class="iconx" id="sClose" aria-label="Close">✕</button></div>
    ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint">👆 Drag to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
-   <div class="sugg" id="sugg"></div>
+   <label class="rc-select"><span class="sr">What’s the issue?</span><select id="sIssue"><option value="">What’s the issue? (tap to choose)</option><option>Remove this part</option><option>Make it shorter</option><option>Spelling mistake</option><option>Change the wording</option><option>Text too small</option><option>Text too fast</option><option>Different picture</option><option>Picture is blurry</option><option>Music too loud</option><option>Add our logo</option><option>Colour looks off</option><option>Cut ends too early</option><option value="__other">Something else… (type it below)</option></select></label>
    <div class="rc-compose"><textarea id="sNote" rows="2" maxlength="2000" placeholder="Describe the change…"></textarea>
      <div class="rc-tools">${vid?`<button type="button" class="tool" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="tool mic" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}</div></div>
    <div class="rc-att" id="markPrev" hidden></div>
@@ -851,8 +857,9 @@ function changeSheet(v,vid){
     const setT=s=>{secs=Math.max(0,Math.min(max,s));picked=true;pickUI();paint();if(vid){vid.pause();vid.currentTime=secs}};
     if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);if(vid.currentTime>=1){picked=true;pickUI()}paint()};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
       $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);paint();pickUI()}
-    const fillSugg=()=>{$("#sugg").innerHTML=["Remove this part","Make it shorter","Spelling mistake","Different picture","Too fast","Music too loud"].map(t=>`<button type="button">${esc(t)}</button>`).join("")};
-    $("#sugg").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ta=$("#sNote");ta.value=ta.value.trim()?ta.value.trim()+". "+b.textContent:b.textContent;ta.focus()};
+    const fillSugg=()=>{};const iss=$("#sIssue");
+    iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";if(o)$("#sNote").focus()};
+    
     const sh=$("#sheet"),ta0=$("#sNote");
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
     ta0.addEventListener("focus",()=>{sh.classList.add("typing")});
@@ -913,7 +920,7 @@ function changeSheet(v,vid){
     sheetCleanup=()=>{stopAll();if(sheetCleanupDraw){try{sheetCleanupDraw()}catch(e){}}};
     // ---- send ----
     $("#sSend").onclick=async()=>{if(mr&&mr.state==="recording"){$("#sMsg").textContent="Stop the recording first.";return}
-      let note=$("#sNote").value.trim();if(!note&&markBlob&&!blob)note="See the marked spot";if(!note&&!blob){$("#sMsg").textContent="Type a note, record your voice, or draw on the video.";$("#sNote").focus();return}
+      const pick=$("#sIssue").value&&$("#sIssue").value!=="__other"?$("#sIssue").value:"";let note=$("#sNote").value.trim();note=pick&&note?pick+": "+note:pick||note;if(!note&&markBlob&&!blob)note="See the marked spot";if(!note&&!blob){$("#sMsg").textContent="Choose an issue, type a note, record your voice, or draw on the video.";$("#sNote").focus();return}
       if(!picked&&!warned){warned=true;$("#sMsg").textContent="Is this about 0:00? Drag the slider to the right moment, or tap Send again.";const f=$("#frameBox");f&&f.scrollIntoView({block:"nearest"});return}
       if(!note)note="Voice note";
       const type="clip";
@@ -930,7 +937,7 @@ function changeSheet(v,vid){
       if(error){b.disabled=false;b.textContent="Send note";$("#sMsg").textContent="Couldn’t send. Check your connection and try again.";return}
       sent++;ctab="changes";
       $("#sCount").hidden=false;$("#sCount").textContent=`✓ ${sent} sent`;
-      $("#sNote").value="";$("#sNote").style.height="";blob=null;idle();markBlob=null;showMark();cats=new Set(["clip"]);syncCats();
+      $("#sNote").value="";$("#sNote").style.height="";$("#sIssue").value="";$("#sIssue").onchange();blob=null;idle();markBlob=null;showMark();cats=new Set(["clip"]);syncCats();
       sh.classList.remove("typing");document.activeElement&&document.activeElement.blur&&document.activeElement.blur();
       b.disabled=false;b.textContent="Add another";$("#sDone").hidden=false;$("#sendRow").classList.add("multi");
       $("#sMsg").textContent="";toast("Sent ✓ Move to the next moment to add another.");
