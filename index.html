@@ -458,8 +458,9 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.022em}
 .logo i{border-radius:8px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 80%,#fff),var(--accent))}
 .form h2{font-size:34px}
 .player video{max-height:min(60vh,600px)}
-.app.client .player video{max-height:min(62vh,calc(100dvh - 290px))}
-.app.client .dock{position:relative;bottom:auto;margin:12px 12px 0}
+.app.client .player video{max-height:max(280px,min(62vh,calc(100dvh - 400px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))))}
+.app.client .dock{margin:10px 12px 0}
+body.composing .app.client .player video,body.composing .player video{max-height:30vh}
 .dock{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px;padding:8px;border-radius:20px;background:var(--mat);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);box-shadow:0 8px 30px rgba(0,0,0,.25),inset 0 0 0 .5px var(--mat-line)}
 .dock .btn{min-height:50px;border-radius:14px;font-size:16px}
 .dock .btn.fix{background:var(--fill);color:var(--ink)}
