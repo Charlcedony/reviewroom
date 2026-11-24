@@ -555,6 +555,8 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.pointer.right{left:auto;right:14px;transform:none;justify-items:end;animation:bobr 1s ease-in-out infinite}
+@keyframes bobr{50%{transform:translateY(8px)}}
 .player:has(.drv){grid-template-columns:minmax(0,1fr);overflow:hidden}
 .drv{position:relative;width:100%;min-width:0;max-width:100%;aspect-ratio:16/9;margin:0 auto;background:#000;overflow:hidden}
 .drvlink{display:flex;justify-content:flex-end;padding:6px 12px 0}.drvlink a{font-size:13px;font-weight:600;color:var(--accent);text-decoration:none}
@@ -1177,7 +1179,7 @@ function changeSheet(v,vid){
 function accountSheet(){
   const nm=(me.name||"You").replace(/(^|\s)\S/g,c=>c.toUpperCase());
   openSheet(`<div class="rc-head"><div style="min-width:0"><div class="label">Account</div><h2>${esc(nm)}</h2><div class="rc-sub">${esc(me.email)}</div></div><button type="button" class="iconx" id="aX" aria-label="Close">✕</button></div>
-   ${standalone?"":`<div class="card" style="padding:14px"><b>Use it like an app</b><p class="small muted" style="margin:6px 0 0">iPhone: open this site in Safari, tap Share, then “Add to Home Screen”.<br>Android: tap “Install”, or the browser menu → “Install app”.<br>You’ll stay signed in on this device.</p></div>`}
+   ${standalone?"":`<div class="card" style="padding:14px"><b>Use it like an app</b><p class="small muted" style="margin:6px 0 0">iPhone: open this site in Safari, tap ⋯ (bottom right) → Share → “Add to Home Screen”.<br>Android: tap “Install”, or the browser menu → “Install app”.<br>You’ll stay signed in on this device.</p></div>`}
    <details class="card" style="padding:14px"><summary style="font-weight:600;cursor:pointer">Change password</summary>
      <div style="display:grid;gap:10px;margin-top:12px"><input class="input" id="np1" type="password" autocomplete="new-password" placeholder="New password (6+ characters)"><input class="input" id="np2" type="password" autocomplete="new-password" placeholder="Type it again"><button class="btn primary" id="npGo">Save new password</button><div class="msg" id="npMsg"></div></div></details>
    <button class="btn lg block" id="sOut">Sign out</button>`,()=>{$("#sOut").onclick=signOut;$("#aX").onclick=closeSheet;
@@ -1639,6 +1641,7 @@ addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;if(!sta
 const inApp=/FBAN|FBAV|Instagram|Line[/]|WhatsApp|GSA[/]/i.test(navigator.userAgent);
 const SHARE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg>';
 const PLUS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+const ios26=(()=>{const m=navigator.userAgent.match(/Version\/(\d+)/);return ios&&!!m&&+m[1]>=26})();
 function iosGuide(){
   if(inApp){openSheet(`<div class="shead"><div><div class="label">Get the app</div><h2>Open in Safari first</h2></div><button type="button" class="btn sm" id="gX">Close</button></div>
     <p class="muted" style="margin:0">This link opened inside another app. To add Review Room to your home screen, open it in Safari.</p>
@@ -1646,8 +1649,9 @@ function iosGuide(){
     <button class="btn primary lg" id="gCopy">Copy link instead</button>`,()=>{$("#gX").onclick=closeSheet;$("#gCopy").onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname);toast("Link copied. Paste it in Safari.")}catch(e){}}});return}
   openSheet(`<div class="shead"><div><div class="label">Get the app</div><h2>Add to your home screen</h2></div><button type="button" class="btn sm" id="gX">Close</button></div>
     <p class="muted" style="margin:0">Takes 10 seconds. After this, Review Room opens like an app and keeps you signed in.</p>
-    <ol class="steps"><li><span>Tap the Share button ${SHARE} at the bottom of Safari</span></li><li><span>Scroll down and tap <b>Add to Home Screen</b> ${PLUS}</span></li><li><span>Tap <b>Add</b> at the top right</span></li></ol>
-    <button class="btn primary lg" id="gGo">Show me where</button>`,()=>{$("#gX").onclick=closeSheet;$("#gGo").onclick=()=>{closeSheet();const d=document.createElement("div");d.className="pointer";d.innerHTML=`<span>Tap Share below</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M5 13l7 7 7-7"/></svg>`;document.body.appendChild(d);setTimeout(()=>d.remove(),9000);addEventListener("touchstart",()=>d.remove(),{once:true})}})}
+    ${ios26?`<ol class="steps"><li><span>Tap <b>⋯</b> at the bottom right, next to the address bar</span></li><li><span>Tap <b>Share</b> ${SHARE}</span></li><li><span>Scroll down and tap <b>Add to Home Screen</b> ${PLUS} <span class="muted">(tap <b>View More</b> if you don’t see it)</span></span></li><li><span>Keep <b>Open as Web App</b> on, then tap <b>Add</b></span></li></ol>`
+    :`<ol class="steps"><li><span>Tap the Share button ${SHARE} at the bottom of Safari</span></li><li><span>Scroll down and tap <b>Add to Home Screen</b> ${PLUS}</span></li><li><span>Tap <b>Add</b> at the top right</span></li></ol>`}
+    <button class="btn primary lg" id="gGo">Show me where</button>`,()=>{$("#gX").onclick=closeSheet;$("#gGo").onclick=()=>{closeSheet();const d=document.createElement("div");d.className="pointer"+(ios26?" right":"");d.innerHTML=`<span>${ios26?"Tap ⋯ here":"Tap Share below"}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M5 13l7 7 7-7"/></svg>`;document.body.appendChild(d);setTimeout(()=>d.remove(),9000);addEventListener("touchstart",()=>d.remove(),{once:true})}})}
 if(ios){$("#installText").textContent="Open Review Room like an app, without typing the link.";$("#installBtn").textContent="Show me how"}
 const hideInstall=()=>{$("#installBar").hidden=true;document.body.classList.remove("has-install")};
 $("#installBtn").onclick=async()=>{if(ios){iosGuide();return}if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;hideInstall()};
