@@ -555,6 +555,34 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.won.top{margin:0 12px 12px;padding:14px}.won.top .btn{min-height:50px}
+.swipe{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 6px;scrollbar-width:none}
+.swipe::-webkit-scrollbar{display:none}
+.swipe>*{flex:0 0 84%;scroll-snap-align:start;margin:0}
+.plan{border:0;font:inherit;color:inherit;width:100%;cursor:pointer}
+.plan .chev,.calrow .chev{font-size:22px;color:var(--muted);line-height:1}
+.plan.planned{cursor:default}.plan.planned .plan-acts{flex-basis:100%}
+.rate1{flex-direction:column;align-items:flex-start;justify-content:center}
+.hrow{display:flex;gap:8px;overflow-x:auto;flex-wrap:nowrap!important;margin:0 -20px;padding:0 20px;scrollbar-width:none}.hrow::-webkit-scrollbar{display:none}
+.hrow button{flex:none}
+.capbox summary{list-style:none;font-weight:600;font-size:14px;cursor:pointer}.capbox summary::-webkit-details-marker{display:none}
+.capbox summary span{color:var(--muted);font-weight:500}.capbox summary::before{content:"+ ";color:var(--accent)}
+.capbox[open] summary::before{content:"− "}
+.capin{display:grid;gap:8px;margin-top:8px}.capin .link{justify-self:start;font-size:13px}
+#pCal svg{width:18px;height:18px}
+.plan-foot{display:flex;justify-content:center;gap:20px;margin-top:-6px}.plan-foot .link{font-size:13px}
+.hello-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.calbtn{display:inline-flex;align-items:center;gap:6px;flex:none;border:0;border-radius:99px;height:36px;padding:0 12px;background:var(--accent-soft);color:var(--accent);font:600 14px var(--font)}.calbtn svg{width:16px;height:16px}
+.calstrip{display:flex;gap:6px;overflow-x:auto;margin:0 -20px;padding:0 20px 4px;scrollbar-width:none}.calstrip::-webkit-scrollbar{display:none}
+.cday{flex:none;width:44px;padding:8px 0;border-radius:14px;background:var(--fill2);display:grid;justify-items:center;gap:2px}
+.cday small{font-size:11px;color:var(--muted);font-weight:600}.cday b{font-size:16px}
+.cday i{width:5px;height:5px;border-radius:50%;background:transparent}.cday.has i{background:var(--accent)}
+.cday.today{background:var(--accent);color:#fff}.cday.today small{color:rgba(255,255,255,.8)}.cday.today.has i{background:#fff}
+.calgrp{display:grid;gap:6px}
+.calrow{display:flex;align-items:center;gap:12px;padding:12px;border:0;border-radius:14px;background:var(--fill2);font:inherit;color:inherit;width:100%}
+.calrow b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.calrow small{font-size:12.5px;color:var(--muted)}
+.calrow .ct{font:600 13px var(--mono);color:var(--accent);min-width:58px}.calrow .ct svg{width:18px;height:18px}
+.calrow.posted{opacity:.6}
 .genlink{border:0;background:none;padding:0;margin:-6px 0 -4px;justify-self:start;color:var(--accent);font:600 13px var(--font)}
 .cbox .rc-att{padding:6px 8px;border-radius:12px;font-size:13px;margin:0 6px 2px 0}
 .won{display:grid;gap:12px;padding:16px;border-radius:20px;background:linear-gradient(160deg,color-mix(in srgb,var(--ok) 16%,var(--panel)),var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ok) 25%,transparent)}
@@ -884,7 +912,7 @@ function clientHome(){
   const first=((n)=>n?n[0].toUpperCase()+n.slice(1):"there")((me.name||"").split(" ")[0]);
   const headline=!videos.length?`Welcome, ${esc(first)}`:g.review.length?`Hi ${esc(first)}, ${g.review.length} to review`:`You’re all caught up, ${esc(first)}`;
   const sub=!videos.length?"Your videos will appear here as soon as they’re ready.":g.review.length?"Watch each one, then approve it or request changes.":g.changes.length?"We’re working on the changes you asked for. You’ll see the new version here.":"Every video has been approved. Thank you!";
-  return `<div class="hello"><h1>${headline}</h1><p class="muted" style="margin:6px 0 0">${sub}</p></div>
+  return `<div class="hello"><div class="hello-row"><h1>${headline}</h1>${videos.some(v=>v.status==="approved")?`<button class="calbtn" data-calendar aria-label="Content calendar">${PI.cal}<span>Calendar</span></button>`:""}</div><p class="muted" style="margin:6px 0 0">${sub}</p></div>
   ${videos.length?`<div class="summary">
     <button data-ctab="review" class="${ctab==="review"?"on":""}"><span class="n">${g.review.length}</span><span class="l">To review</span></button>
     <button data-ctab="changes" class="${ctab==="changes"?"on":""}"><span class="n">${g.changes.length}</span><span class="l">In progress</span></button>
@@ -897,14 +925,13 @@ function clientVideo(v){
   const fromTeam=v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:"";
   if(v.status==="approved"){
     const dl=v.storage_path?`<button class="btn primary lg block" data-dl="${v.id}">Download final video</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary lg block" href="${esc(v.link)}" target="_blank" rel="noopener">Open final video</a>`:"";
-    const rate=v.rating?`<div class="rate1"><span>You rated us</span><span class="starsTxt">${"★".repeat(v.rating)}</span></div>`
-      :`<div class="rate1"><span>Rate this project</span><div class="stars sm">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`;
-    return `<article class="card video rise">${head}${playerHtml(v)}
+    const rate=v.rating?`<div class="rate1"><span>You rated us</span><span class="starsTxt">${"★".repeat(v.rating)}</span><span class="small muted">Thank you!</span></div>`
+      :`<div class="rate1"><span>How did we do?</span><div class="stars sm">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`;
+    return `<article class="card video rise">${head}
+     <div class="won top"><div class="won-top"><div class="dl-ic">${PI.check}</div><div><b>Your final video is ready</b><span>Approved ${ago(v.updated_at||v.created_at)} · version ${v.version}</span></div></div>${dl}</div>
+     ${playerHtml(v)}
      <div class="vbody">
-      <div class="won"><div class="won-top"><div class="dl-ic">${PI.check}</div><div><b>Your final video is ready</b><span>Approved ${ago(v.updated_at||v.created_at)} · version ${v.version}</span></div></div>
-        <div class="perks"><span>${PI.check}Full-quality file</span><span>${PI.check}Ready caption</span><span>${PI.check}Posting reminder</span></div>${dl}</div>
-      ${planCard(v)}
-      ${rate}
+      <div class="swipe">${planCard(v)}${rate}</div>
       <details class="more"><summary>History & options</summary><div class="more-in">
         ${cmpBtn(v)}${fromTeam}${notesByVersion(v,false)||'<div class="small muted">No notes on this video.</div>'}
         <div class="more-acts"><button class="btn sm" data-change="${v.id}">Add a note</button><button class="btn ghost sm" data-undo="${v.id}">Undo approval</button></div></div></details>
@@ -1239,7 +1266,8 @@ function wire(){
       $("#mGo").disabled=true;const {error}=await sb.from("corrections").insert({video_id:v.id,type:"clip",time_label:"Message",seconds:0,note:t,version:v.version});
       if(error){$("#mGo").disabled=false;$("#mMsg").textContent="Couldn’t send. Try again.";return}closeSheet();await load();render();toast("Message sent ✓")}})});
   on("[data-plan]",b=>planSheet(videos.find(x=>x.id===b.dataset.plan)));
-  on("[data-ics]",b=>{const v=videos.find(x=>x.id===b.dataset.ics);const a=document.createElement("a");a.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(icsFor(v));a.download=(v.title||"post").replace(/[^\w ]+/g,"").trim()+".ics";document.body.appendChild(a);a.click();a.remove();toast("Opening your calendar…")});
+  on("[data-ics]",b=>{downloadIcs(videos.find(x=>x.id===b.dataset.ics));toast("Opening your calendar…")});
+  on("[data-calendar]",calendarSheet);
   on("[data-cap]",async b=>{const v=videos.find(x=>x.id===b.dataset.cap);try{await navigator.clipboard.writeText(v.caption);toast("Caption copied ✓")}catch(e){prompt("Copy your caption:",v.caption)}});
   on("[data-posted]",async b=>{const v=videos.find(x=>x.id===b.dataset.posted);celebrate(b);const {error}=await sb.rpc("plan_post",{vid:v.id,at:v.post_at,plats:v.platforms||[],cap:v.caption||"",done:true});if(error)return toast("Couldn’t save.",true);await load();render();toast("Nice! Marked as posted 🎉")});
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
@@ -1301,35 +1329,54 @@ const PI={cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const PLATS=["Instagram","YouTube Shorts","Facebook","WhatsApp Status"];
 const postWhen=d=>{const t=new Date(d);return t.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+" · "+t.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
 function captionFor(v){const base=(v.title||"").replace(/\b(final|short|v\d+|with bgm|with music)\b/gi,"").replace(/\s+/g," ").trim();
-  return `${base||"New video"} ✨\n\nWatch till the end and share it with someone who needs this today.\n\n#reels #shorts #trending #viral #explore`}
+  const b2=base.replace(/^[\d\s\-–]+$/,"");return `${b2.length>3?b2:"Something special for you today"} ✨\n\nWatch till the end and share it with someone who needs this today.\n\n#reels #shorts #trending #viral #explore`}
 function planCard(v){
-  if(!v.post_at)return `<div class="plan"><div class="plan-ic">${PI.cal}</div><div style="flex:1;min-width:0"><b>Plan your post</b><span>Pick a time, get a reminder and a ready caption.</span></div><button class="btn primary sm" data-plan="${v.id}">Plan</button></div>`;
+  if(!v.post_at)return `<button class="plan" data-plan="${v.id}"><div class="plan-ic">${PI.cal}</div><div style="flex:1;min-width:0;text-align:left"><b>Schedule your post</b><span>Get a reminder + ready caption</span></div><span class="chev">›</span></button>`;
   const past=new Date(v.post_at)<Date.now();
-  return `<div class="plan planned ${v.posted?"posted":""}"><div class="plan-ic">${v.posted?PI.check:PI.cal}</div><div style="flex:1;min-width:0"><b>${v.posted?"Posted":past?"Time to post!":"Posting "+esc(postWhen(v.post_at))}</b><span>${v.posted?esc(postWhen(v.post_at)):""}${v.platforms&&v.platforms.length?(v.posted?" · ":"")+esc(v.platforms.join(" · ")):""}</span></div><button class="btn ghost sm" data-plan="${v.id}">Edit</button></div>
-    ${v.posted?"":`<div class="plan-acts"><button class="btn sm" data-ics="${v.id}">${PI.cal}Add to calendar</button>${v.caption?`<button class="btn sm" data-cap="${v.id}">${PI.copy}Copy caption</button>`:""}<button class="btn sm ok" data-posted="${v.id}">${PI.check}Mark posted</button></div>`}`}
+  return `<div class="plan planned ${v.posted?"posted":""}" style="flex-wrap:wrap"><div class="plan-ic">${v.posted?PI.check:PI.cal}</div><div style="flex:1;min-width:0"><b>${v.posted?"Posted":past?"Time to post!":"Posting "+esc(postWhen(v.post_at))}</b><span>${v.posted?esc(postWhen(v.post_at)):""}${v.platforms&&v.platforms.length?(v.posted?" · ":"")+esc(v.platforms.join(" · ")):""}</span></div><button class="btn ghost sm" data-plan="${v.id}">Edit</button>
+    ${v.posted?"":`<div class="plan-acts">${v.caption?`<button class="btn sm" data-cap="${v.id}">${PI.copy}Caption</button>`:""}<button class="btn sm ok" data-posted="${v.id}">${PI.check}Posted</button></div>`}</div>`}
 function planSheet(v){
   const d0=v.post_at?new Date(v.post_at):null;const pad=n=>String(n).padStart(2,"0");
   const local=t=>`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
   const at=(days,h)=>{const t=new Date();t.setDate(t.getDate()+days);t.setHours(h,0,0,0);return t};
-  const quick=[["Today 7 PM",at(0,19)],["Tomorrow 12 PM",at(1,12)],["Tomorrow 7 PM",at(1,19)]].filter(([,t])=>t>Date.now());
+  const quick=[["Today 7 PM",at(0,19)],["Tmrw 12 PM",at(1,12)],["Tmrw 7 PM",at(1,19)],["Weekend 11 AM",(()=>{const t=at(0,11);t.setDate(t.getDate()+((6-t.getDay()+7)%7||7));return t})()]].filter(([,t])=>t>Date.now());
   const sel=new Set(v.platforms||["Instagram"]);
-  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Plan your post</h2><div class="rc-sub">${esc(v.title)}</div></div><button type="button" class="iconx" id="pX" aria-label="Close">✕</button></div>
-    <div class="field"><label>When?</label><div class="qchips">${quick.map(([l,t],i)=>`<button type="button" class="${!d0&&i===0?"on":""}" data-t="${local(t)}">${l}</button>`).join("")}</div>
-      <label class="dtrow"><span>${PI.cal}Or pick a date & time</span><input type="datetime-local" id="pAt" value="${d0?local(d0):quick[0]?local(quick[0][1]):local(at(1,19))}"></label>
-      <div class="tip">${PI.check}<span>Best times for short videos: <b>11 AM–1 PM</b> or <b>7–9 PM</b></span></div></div>
-    <div class="field"><label>Where?</label><div class="plats">${PLATS.map(x=>`<button type="button" class="${sel.has(x)?"on":""}" data-p="${x}">${x}</button>`).join("")}</div></div>
-    <div class="field"><label for="pCap" style="display:flex;justify-content:space-between">Caption <button type="button" class="link" id="pSug" style="font-size:13px">Suggest one</button></label><textarea class="input" id="pCap" rows="4" placeholder="Write your caption…">${esc(v.caption||"")}</textarea></div>
-    <div class="msg" id="pMsg"></div><button class="btn primary lg" id="pGo">Save plan</button>
-    ${v.post_at?`<button class="btn ghost sm" id="pDel" style="justify-self:center">Remove plan</button>`:""}`,
+  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Schedule your post</h2><div class="rc-sub">Best for short videos: 11 AM–1 PM or 7–9 PM</div></div><button type="button" class="iconx" id="pX" aria-label="Close">✕</button></div>
+    <div class="hrow qchips">${quick.map(([l,t],i)=>`<button type="button" class="${!d0&&i===0?"on":""}" data-t="${local(t)}">${l}</button>`).join("")}</div>
+    <label class="dtrow"><span>${PI.cal}Date & time</span><input type="datetime-local" id="pAt" value="${d0?local(d0):quick[0]?local(quick[0][1]):local(at(1,19))}"></label>
+    <div class="hrow plats">${PLATS.map(x=>`<button type="button" class="${sel.has(x)?"on":""}" data-p="${x}">${x}</button>`).join("")}</div>
+    <details class="capbox" ${v.caption?"open":""}><summary>Caption <span>(optional)</span></summary><div class="capin"><textarea class="input" id="pCap" rows="3" placeholder="Write your caption…">${esc(v.caption||"")}</textarea><button type="button" class="link" id="pSug">✨ Suggest a caption</button></div></details>
+    <div class="msg" id="pMsg"></div>
+    <button class="btn primary lg" id="pCal">${PI.cal}Add to calendar</button>
+    <div class="plan-foot"><button type="button" class="link" id="pGo">Just save, no calendar</button>${v.post_at?`<button type="button" class="link danger" id="pDel">Remove</button>`:""}</div>`,
   ()=>{$("#pX").onclick=closeSheet;
     $("#pAt").oninput=()=>$("#sheetBody").querySelectorAll(".qchips button").forEach(x=>x.classList.toggle("on",x.dataset.t===$("#pAt").value));
     $("#sheetBody").querySelectorAll(".qchips button").forEach(b=>b.onclick=()=>{$("#pAt").value=b.dataset.t;$("#sheetBody").querySelectorAll(".qchips button").forEach(x=>x.classList.toggle("on",x===b))});
     $("#sheetBody").querySelectorAll(".plats button").forEach(b=>b.onclick=()=>{const k=b.dataset.p;sel.has(k)?sel.delete(k):sel.add(k);b.classList.toggle("on")});
     $("#pSug").onclick=()=>{$("#pCap").value=captionFor(v)};
-    const save=async(at,done)=>{$("#pGo").disabled=true;const {error}=await sb.rpc("plan_post",{vid:v.id,at,plats:[...sel],cap:$("#pCap").value.trim(),done});
-      if(error){$("#pGo").disabled=false;$("#pMsg").textContent="Couldn’t save. Try again.";return}closeSheet();await load();render();toast(at?"Plan saved ✓":"Plan removed")};
-    $("#pGo").onclick=()=>{const val=$("#pAt").value;if(!val){$("#pMsg").textContent="Pick a day and time.";return}if(!sel.size){$("#pMsg").textContent="Pick at least one place to post.";return}save(new Date(val).toISOString(),false)};
+    const save=async(at,cal)=>{const {error}=await sb.rpc("plan_post",{vid:v.id,at,plats:[...sel],cap:$("#pCap").value.trim(),done:false});
+      if(error){$("#pMsg").textContent="Couldn’t save. Try again.";return}
+      if(cal)downloadIcs({...v,post_at:at,platforms:[...sel],caption:$("#pCap").value.trim()});
+      closeSheet();await load();render();toast(!at?"Removed":cal?"Added to your calendar ✓":"Saved ✓")};
+    const go=cal=>{const val=$("#pAt").value;if(!val){$("#pMsg").textContent="Pick a day and time.";return}if(!sel.size){$("#pMsg").textContent="Pick at least one place to post.";return}save(new Date(val).toISOString(),cal)};
+    $("#pCal").onclick=()=>go(true);$("#pGo").onclick=()=>go(false);
     if($("#pDel"))$("#pDel").onclick=()=>save(null,false)})}
+function downloadIcs(v){const a=document.createElement("a");a.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(icsFor(v));a.download=(v.title||"post").replace(/[^\w ]+/g,"").trim()+".ics";document.body.appendChild(a);a.click();a.remove()}
+// 4) content calendar
+function calendarSheet(){
+  const planned=videos.filter(v=>v.post_at).sort((a,b)=>new Date(a.post_at)-new Date(b.post_at));
+  const todo=videos.filter(v=>v.status==="approved"&&!v.post_at);
+  const now=new Date(),days=[...Array(14)].map((_,i)=>{const d=new Date(now);d.setDate(d.getDate()+i);d.setHours(0,0,0,0);return d});
+  const has=d=>planned.some(v=>new Date(v.post_at).toDateString()===d.toDateString());
+  const strip=`<div class="calstrip">${days.map(d=>`<div class="cday ${has(d)?"has":""} ${d.toDateString()===now.toDateString()?"today":""}"><small>${d.toLocaleDateString(undefined,{weekday:"short"})[0]}</small><b>${d.getDate()}</b><i></i></div>`).join("")}</div>`;
+  const groups={};planned.forEach(v=>{const k=new Date(v.post_at).toDateString();(groups[k]=groups[k]||[]).push(v)});
+  const list=Object.entries(groups).map(([k,vs])=>{const d=new Date(k);const lbl=d.toDateString()===now.toDateString()?"Today":d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"});
+    return `<div class="calgrp"><div class="label">${lbl}</div>${vs.map(v=>`<button class="calrow ${v.posted?"posted":""}" data-cplan="${v.id}"><span class="ct">${new Date(v.post_at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}</span><span style="min-width:0;flex:1;text-align:left"><b>${esc(v.title)}</b><small>${v.posted?"✓ Posted":esc((v.platforms||[]).join(" · "))}</small></span><span class="chev">›</span></button>`).join("")}</div>`}).join("");
+  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Content calendar</h2><div class="rc-sub">${planned.filter(v=>!v.posted).length} post${planned.filter(v=>!v.posted).length===1?"":"s"} scheduled</div></div><button type="button" class="iconx" id="cX" aria-label="Close">✕</button></div>
+    ${strip}
+    ${list||'<div class="empty small">Nothing scheduled yet. Pick a video below to plan its post.</div>'}
+    ${todo.length?`<div class="calgrp"><div class="label">Ready to schedule</div>${todo.map(v=>`<button class="calrow todo" data-cplan="${v.id}"><span class="ct">${PI.cal}</span><span style="min-width:0;flex:1;text-align:left"><b>${esc(v.title)}</b><small>Approved · not scheduled</small></span><span class="chev">›</span></button>`).join("")}</div>`:""}`,
+  ()=>{$("#cX").onclick=closeSheet;$("#sheetBody").querySelectorAll("[data-cplan]").forEach(b=>b.onclick=()=>{const v=videos.find(x=>x.id===b.dataset.cplan);closeSheet();setTimeout(()=>planSheet(v),300)})})}
 function icsFor(v){const t=new Date(v.post_at),e=new Date(t.getTime()+15*60e3),f=x=>x.toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
   const esc2=x=>String(x||"").replace(/[\\,;]/g,m=>"\\"+m).replace(/\n/g,"\\n");
   return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Review Room//EN","BEGIN:VEVENT","UID:"+v.id+"@reviewroom","DTSTAMP:"+f(new Date()),"DTSTART:"+f(t),"DTEND:"+f(e),
