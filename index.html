@@ -592,7 +592,7 @@ body.composing .dock{visibility:hidden}
 .perks svg{width:13px;height:13px;color:var(--ok)}
 .rate1{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:16px;background:var(--fill2);font-weight:600;font-size:14px}
 .stars.sm button{font-size:26px}
-.more{border-radius:16px;background:var(--fill2)}
+.more{border-radius:16px;background:var(--fill2);width:100%}
 .more summary{list-style:none;padding:12px 14px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer;display:flex;justify-content:space-between}
 .more summary::-webkit-details-marker{display:none}.more summary::after{content:"›";transform:rotate(90deg);font-size:18px;line-height:1}
 .more[open] summary::after{transform:rotate(-90deg)}
@@ -1329,7 +1329,7 @@ const PI={cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const PLATS=["Instagram","YouTube Shorts","Facebook","WhatsApp Status"];
 const postWhen=d=>{const t=new Date(d);return t.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+" · "+t.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})};
 function captionFor(v){const base=(v.title||"").replace(/\b(final|short|v\d+|with bgm|with music)\b/gi,"").replace(/\s+/g," ").trim();
-  const b2=base.replace(/^[\d\s\-–]+$/,"");return `${b2.length>3?b2:"Something special for you today"} ✨\n\nWatch till the end and share it with someone who needs this today.\n\n#reels #shorts #trending #viral #explore`}
+  const b2=base.replace(/\b\d+\b/g,"").replace(/^[\s\-–]+|[\s\-–]+$/g,"").replace(/\s+/g," ").trim();return `${b2.length>3?b2:"Something special for you today"} ✨\n\nWatch till the end and share it with someone who needs this today.\n\n#reels #shorts #trending #viral #explore`}
 function planCard(v){
   if(!v.post_at)return `<button class="plan" data-plan="${v.id}"><div class="plan-ic">${PI.cal}</div><div style="flex:1;min-width:0;text-align:left"><b>Schedule your post</b><span>Get a reminder + ready caption</span></div><span class="chev">›</span></button>`;
   const past=new Date(v.post_at)<Date.now();
