@@ -555,6 +555,14 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+#sMsg{margin:-6px 0 -4px;font-size:13px;font-weight:600}
+.michelp{position:fixed;inset:0;z-index:130;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
+.michelp.show{opacity:1}
+.mh-card{width:min(360px,100%);background:var(--panel);border-radius:22px;padding:22px;display:grid;gap:10px;box-shadow:var(--shadow);transform:scale(.96);transition:transform .35s var(--spring)}
+.michelp.show .mh-card{transform:none}
+.mh-ic{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}.mh-ic svg{width:24px;height:24px}
+.mh-card b{font-size:17px}.mh-card ol{margin:0;padding-left:20px;display:grid;gap:6px;font-size:15px;color:var(--ink2)}.mh-card ol b{font-size:inherit}
+.mh-card p{margin:0;font-size:14px;color:var(--muted)}
 .cbox{display:grid;gap:4px;padding:10px 8px 8px 14px;border-radius:24px;background:var(--fill2)}
 .cbox textarea{border:0;background:transparent;resize:none;font-size:16px;line-height:1.4;padding:4px 4px 2px 0;min-height:28px;max-height:140px;outline:none;color:var(--ink);width:100%}
 .cbar{display:flex;align-items:center;gap:6px;min-width:0}
@@ -872,6 +880,7 @@ function changeSheet(v,vid){
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>What needs changing?</h2><div class="rc-sub">${esc(v.title)} <span class="sentpill" id="sCount" hidden></span></div></div><button type="button" class="iconx" id="sClose" aria-label="Close">✕</button></div>
    ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12H3m0 0 3-3m-3 3 3 3M16 12h5m0 0-3-3m3 3-3 3"/></svg>Drag the slider to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
+   <div class="msg" id="sMsg"></div>
    <div class="cbox"><textarea id="sNote" rows="1" maxlength="2000" placeholder="Describe the change…"></textarea>
      <div class="cbar"><label class="ipill"><span class="sr">Issue</span><select id="sIssue"><option value="">Issue type</option><option>Cut this part</option><option>Trim / shorten</option><option>Text or spelling</option><option>Music or sound</option><option>Colour or picture</option><option value="__other">Other (type it)</option></select></label>
        <span style="flex:1"></span>
@@ -879,7 +888,7 @@ function changeSheet(v,vid){
        <button type="button" class="csend" id="sSend" aria-label="Send note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
    <div class="rc-att" id="markPrev" hidden></div>
    <div class="rec" id="recBox" hidden></div>
-   <div class="msg" id="sMsg"></div><div class="donerow" id="sendRow" hidden><button class="btn lg block" id="sDone">Done</button></div>`,
+   <div class="donerow" id="sendRow" hidden><button class="btn lg block" id="sDone">Done</button></div>`,
   ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=dur||99999;let picked=!vid||vid.currentTime>=1;let warned=false;
     const pickUI=()=>{const f=$("#frameBox");if(f)f.classList.toggle("needpick",!picked)};
     const paint=()=>{if(!vid)return;$("#sTime").textContent=fmt(secs);const rg=$("#sRange");rg.value=secs;rg.style.setProperty("--p",(secs/(+rg.max||1)*100)+"%")};
@@ -901,7 +910,7 @@ function changeSheet(v,vid){
     const recBox=$("#recBox");
     const idle=()=>{recBox.hidden=true;recBox.innerHTML="";if($("#recBtn"))$("#recBtn").hidden=false};
     const stopAll=()=>{clearInterval(tick);if(mr&&mr.state!=="inactive")mr.stop();if(stream)stream.getTracks().forEach(t=>t.stop())};
-    async function start(){try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){$("#sMsg").textContent="Microphone access was blocked. Allow it in your browser settings to record.";return}
+    async function start(){try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){micHelp();return}
       const type=["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||"";
       mr=new MediaRecorder(stream,type?{mimeType:type}:undefined);const parts=[];mr.ondataavailable=e=>{if(e.data.size)parts.push(e.data)};
       mr.onstop=()=>{stream.getTracks().forEach(t=>t.stop());blob=new Blob(parts,{type:mr.mimeType||type||"audio/mp4"});
@@ -1177,8 +1186,7 @@ function wire(){
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
   on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
     $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid);
-    if(vid)setTimeout(()=>{const sh=$("#sheet").getBoundingClientRect().height,tp=$(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0;
-      document.documentElement.style.setProperty("--vidmax",Math.max(160,innerHeight-sh-tp-20)+"px");setTimeout(()=>{const top=vid.getBoundingClientRect().top+scrollY-tp-6;scrollTo({top,behavior:"instant"})},60)},300)});
+    if(vid){setTimeout(()=>fitVideo(vid),300);setTimeout(()=>fitVideo(vid),800);window.__fitVid=vid}});
   on("[data-ctab]",b=>{ctab=b.dataset.ctab;render()});
   on("[data-vf]",b=>{vfilter=b.dataset.vf;render()});
   on("[data-open]",b=>{openVideo=b.dataset.open;render();scrollTo(0,0)});
@@ -1215,6 +1223,19 @@ function welcomeSheet(){const first=((me.name||"").split(" ")[0]||"there");
 function undoBar(msg,fn){document.querySelectorAll(".undobar").forEach(x=>x.remove());const el=document.createElement("div");el.className="undobar";
   el.innerHTML=`<span>${esc(msg)}</span><button type="button">Undo</button><i></i>`;document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add("show"));
   const kill=()=>{el.classList.remove("show");setTimeout(()=>el.remove(),300)};const t=setTimeout(kill,6000);el.querySelector("button").onclick=()=>{clearTimeout(t);kill();fn()}}
+function micHelp(){document.querySelectorAll(".michelp").forEach(x=>x.remove());const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),app=standalone;
+  const el=document.createElement("div");el.className="michelp";
+  el.innerHTML=`<div class="mh-card"><div class="mh-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></div>
+    <b>Allow the microphone to record</b>
+    <ol>${ios&&app?"<li>Close Review Room fully (swipe it away) and open it again.</li><li>Tap the mic and choose <b>Allow</b>.</li><li>Still blocked? iPhone <b>Settings → Safari → Microphone → Ask</b>.</li>"
+      :ios?"<li>Tap <b>aA</b> in Safari’s address bar.</li><li>Tap <b>Website Settings → Microphone → Allow</b>.</li><li>Come back and tap the mic again.</li>"
+      :"<li>Click the lock icon next to the web address.</li><li>Set <b>Microphone</b> to <b>Allow</b>.</li><li>Tap the mic again.</li>"}</ol>
+    <p>Or just type your note instead.</p><button type="button" class="btn primary block">OK</button></div>`;
+  document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add("show"));el.querySelector("button").onclick=()=>{el.classList.remove("show");setTimeout(()=>el.remove(),250)}}
+function fitVideo(vid){if(!vid||!document.body.classList.contains("composing")||document.documentElement.classList.contains("kb-open"))return;
+  const sh=$("#sheet").getBoundingClientRect().height,tp=$(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0;
+  document.documentElement.style.setProperty("--vidmax",Math.max(160,innerHeight-sh-tp-20)+"px");
+  setTimeout(()=>{const top=Math.max(0,vid.getBoundingClientRect().top+scrollY-tp-6);scrollTo(0,top);if(document.scrollingElement)document.scrollingElement.scrollTop=top},80)}
 function celebrate(el){try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
   const rc=el.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,cols=["#22c55e","#3b6cff","#facc15","#f97316","#c084fc"];
   for(let i=0;i<28;i++){const d=document.createElement("i");d.className="confetti";const a=Math.random()*Math.PI*2,sp=80+Math.random()*140;
@@ -1230,8 +1251,8 @@ function openSheet(html,after){lastFocus=document.activeElement;$("#sheetBody").
   const first=$("#sheetBody").querySelector("input,textarea,select,button");if(first&&!first.matches("textarea"))setTimeout(()=>first.focus({preventScroll:true}),260);
   $("#sheetBody").querySelectorAll("input,textarea").forEach(el=>el.addEventListener("focus",()=>setTimeout(()=>el.scrollIntoView({block:"center",behavior:"smooth"}),300)))}
 let sheetCleanup=null;
-if(window.visualViewport){const vv=visualViewport;const fit=()=>{const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty("--kb",kb+"px");document.documentElement.style.setProperty("--vvh",(vv.height-12)+"px");document.documentElement.style.setProperty("--vvb",(vv.offsetTop+vv.height)+"px");document.documentElement.classList.toggle("kb-open",kb>80)};vv.addEventListener("resize",fit);vv.addEventListener("scroll",fit);fit()}
-function closeSheet(){document.body.classList.remove("composing");setTimeout(()=>{$("#sheet").classList.remove("half","typing");$("#scrim").classList.remove("light")},260);if(sheetCleanup){try{sheetCleanup()}catch(e){}sheetCleanup=null}$("#scrim").classList.remove("show");$("#sheet").classList.remove("show");document.body.classList.remove("lock");
+if(window.visualViewport){const vv=visualViewport;const fit=()=>{const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty("--kb",kb+"px");document.documentElement.style.setProperty("--vvh",(vv.height-12)+"px");document.documentElement.style.setProperty("--vvb",(vv.offsetTop+vv.height)+"px");document.documentElement.classList.toggle("kb-open",kb>80)};vv.addEventListener("resize",()=>{fit();if(window.__fitVid)setTimeout(()=>fitVideo(window.__fitVid),150)});vv.addEventListener("scroll",fit);fit()}
+function closeSheet(){window.__fitVid=null;document.body.classList.remove("composing");setTimeout(()=>{$("#sheet").classList.remove("half","typing");$("#scrim").classList.remove("light")},260);if(sheetCleanup){try{sheetCleanup()}catch(e){}sheetCleanup=null}$("#scrim").classList.remove("show");$("#sheet").classList.remove("show");document.body.classList.remove("lock");
   setTimeout(()=>{$("#scrim").hidden=true;$("#sheet").hidden=true;if(pendingRender){pendingRender=false;render()}if(lastFocus&&lastFocus.focus)lastFocus.focus({preventScroll:true})},250)}
 $("#scrim").onclick=closeSheet;$("#sheetX").onclick=closeSheet;document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
 
