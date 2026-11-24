@@ -1060,7 +1060,7 @@ function changeSheet(v,vid){
     const fillSugg=()=>{};const iss=$("#sIssue");
     iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";iss.parentElement.querySelector("select").style.width="auto";if(o)$("#sNote").focus()};
     
-    const sh=$("#sheet"),ta0=$("#sNote");ta0.addEventListener("input",()=>window.__upd&&window.__upd());$("#sIssue").addEventListener("change",()=>window.__upd&&window.__upd());setTimeout(()=>window.__upd&&window.__upd(),0);const clr=()=>{$("#sMsg").textContent=""};ta0.addEventListener("input",clr);$("#sIssue").addEventListener("change",clr);$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("button,select,input"))setTimeout(()=>{if(!e.target.closest("#sSend"))clr()},0)},true);
+    const sh=$("#sheet"),ta0=$("#sNote");ta0.addEventListener("input",()=>window.__upd&&window.__upd());$("#sIssue").addEventListener("change",()=>window.__upd&&window.__upd());setTimeout(()=>window.__upd&&window.__upd(),0);const clr=()=>{const m=$("#sMsg");if(m)m.textContent=""};ta0.addEventListener("input",clr);$("#sIssue").addEventListener("change",clr);if(!window.__clrOn){window.__clrOn=1;$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("button,select,input"))setTimeout(()=>{if(!e.target.closest("#sSend"))clr()},0)},true)}
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
     ta0.addEventListener("focus",()=>{sh.classList.add("typing")});
     ta0.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==ta0)sh.classList.remove("typing")},150));
