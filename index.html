@@ -996,11 +996,12 @@ function changeSheet(v,vid){
       load().then(()=>render(true))}});
 }
 function accountSheet(){
-  openSheet(`<div><div class="label">Account</div><h2>${esc(me.name||"You")}</h2><p class="muted" style="margin:4px 0 0">${esc(me.email)}</p></div>
-   <div class="card" style="padding:14px"><b>Use it like an app</b><p class="small muted" style="margin:6px 0 0">iPhone: open this site in Safari, tap Share, then “Add to Home Screen”.<br>Android: tap “Install”, or the browser menu → “Install app”.<br>You’ll stay signed in on this device.</p></div>
+  const nm=(me.name||"You").replace(/w/g,c=>c.toUpperCase());
+  openSheet(`<div class="rc-head"><div style="min-width:0"><div class="label">Account</div><h2>${esc(nm)}</h2><div class="rc-sub">${esc(me.email)}</div></div><button type="button" class="iconx" id="aX" aria-label="Close">✕</button></div>
+   ${standalone?"":`<div class="card" style="padding:14px"><b>Use it like an app</b><p class="small muted" style="margin:6px 0 0">iPhone: open this site in Safari, tap Share, then “Add to Home Screen”.<br>Android: tap “Install”, or the browser menu → “Install app”.<br>You’ll stay signed in on this device.</p></div>`}
    <details class="card" style="padding:14px"><summary style="font-weight:600;cursor:pointer">Change password</summary>
      <div style="display:grid;gap:10px;margin-top:12px"><input class="input" id="np1" type="password" autocomplete="new-password" placeholder="New password (6+ characters)"><input class="input" id="np2" type="password" autocomplete="new-password" placeholder="Type it again"><button class="btn primary" id="npGo">Save new password</button><div class="msg" id="npMsg"></div></div></details>
-   <button class="btn lg block" id="sOut">Sign out</button>`,()=>{$("#sOut").onclick=signOut;
+   <button class="btn lg block" id="sOut">Sign out</button>`,()=>{$("#sOut").onclick=signOut;$("#aX").onclick=closeSheet;
      $("#npGo").onclick=async()=>{const a=$("#np1").value,b=$("#np2").value,m=$("#npMsg");m.className="msg";if(a.length<6){m.textContent="Use at least 6 characters.";return}if(a!==b){m.textContent="The passwords don’t match.";return}
        $("#npGo").disabled=true;const {error}=await sb.auth.updateUser({password:a});$("#npGo").disabled=false;if(error){m.textContent=error.message;return}m.className="msg good";m.textContent="Password changed ✓";$("#np1").value=$("#np2").value=""}});
 }
