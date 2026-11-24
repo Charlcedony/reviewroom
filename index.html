@@ -578,7 +578,10 @@ body.composing .dock{visibility:hidden}
 .qchips,.plats{display:flex;gap:8px;flex-wrap:wrap}
 .qchips button,.plats button{border:0;border-radius:99px;height:36px;padding:0 14px;background:var(--fill2);color:var(--ink2);font:600 14px var(--font)}
 .qchips button.on,.plats button.on{background:var(--accent);color:#fff}
-.tip{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}.tip svg{width:14px;height:14px;color:var(--ok);flex:none}
+.tip{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:var(--muted)}.tip svg{margin-top:2px}
+.dtrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 6px 0 14px;border-radius:14px;background:var(--fill2);overflow:hidden}
+.dtrow span{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}.dtrow span svg{width:16px;height:16px}
+.dtrow input{min-width:0;max-width:60%;border:0;background:var(--panel);border-radius:10px;height:36px;padding:0 10px;font:600 15px var(--font);color:var(--ink);-webkit-appearance:none;appearance:none}.tip svg{width:14px;height:14px;color:var(--ok);flex:none}
 body.composing .dock{display:none}
 .crec{display:flex;align-items:center;gap:8px;padding:2px 4px 4px 0;min-width:0}
 .crec audio{flex:1;min-width:0;height:36px}
@@ -1311,14 +1314,15 @@ function planSheet(v){
   const quick=[["Today 7 PM",at(0,19)],["Tomorrow 12 PM",at(1,12)],["Tomorrow 7 PM",at(1,19)]].filter(([,t])=>t>Date.now());
   const sel=new Set(v.platforms||["Instagram"]);
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Plan your post</h2><div class="rc-sub">${esc(v.title)}</div></div><button type="button" class="iconx" id="pX" aria-label="Close">✕</button></div>
-    <div class="field"><label>When?</label><div class="qchips">${quick.map(([l,t])=>`<button type="button" data-t="${local(t)}">${l}</button>`).join("")}</div>
-      <input class="input" type="datetime-local" id="pAt" value="${d0?local(d0):""}">
-      <div class="tip">${PI.check}Short videos usually do best <b>11 AM–1 PM</b> and <b>7–9 PM</b>.</div></div>
+    <div class="field"><label>When?</label><div class="qchips">${quick.map(([l,t],i)=>`<button type="button" class="${!d0&&i===0?"on":""}" data-t="${local(t)}">${l}</button>`).join("")}</div>
+      <label class="dtrow"><span>${PI.cal}Or pick a date & time</span><input type="datetime-local" id="pAt" value="${d0?local(d0):quick[0]?local(quick[0][1]):local(at(1,19))}"></label>
+      <div class="tip">${PI.check}<span>Best times for short videos: <b>11 AM–1 PM</b> or <b>7–9 PM</b></span></div></div>
     <div class="field"><label>Where?</label><div class="plats">${PLATS.map(x=>`<button type="button" class="${sel.has(x)?"on":""}" data-p="${x}">${x}</button>`).join("")}</div></div>
     <div class="field"><label for="pCap" style="display:flex;justify-content:space-between">Caption <button type="button" class="link" id="pSug" style="font-size:13px">Suggest one</button></label><textarea class="input" id="pCap" rows="4" placeholder="Write your caption…">${esc(v.caption||"")}</textarea></div>
     <div class="msg" id="pMsg"></div><button class="btn primary lg" id="pGo">Save plan</button>
     ${v.post_at?`<button class="btn ghost sm" id="pDel" style="justify-self:center">Remove plan</button>`:""}`,
   ()=>{$("#pX").onclick=closeSheet;
+    $("#pAt").oninput=()=>$("#sheetBody").querySelectorAll(".qchips button").forEach(x=>x.classList.toggle("on",x.dataset.t===$("#pAt").value));
     $("#sheetBody").querySelectorAll(".qchips button").forEach(b=>b.onclick=()=>{$("#pAt").value=b.dataset.t;$("#sheetBody").querySelectorAll(".qchips button").forEach(x=>x.classList.toggle("on",x===b))});
     $("#sheetBody").querySelectorAll(".plats button").forEach(b=>b.onclick=()=>{const k=b.dataset.p;sel.has(k)?sel.delete(k):sel.add(k);b.classList.toggle("on")});
     $("#pSug").onclick=()=>{$("#pCap").value=captionFor(v)};
