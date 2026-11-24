@@ -555,6 +555,22 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.cbox{display:grid;gap:4px;padding:10px 8px 8px 14px;border-radius:24px;background:var(--fill2)}
+.cbox textarea{border:0;background:transparent;resize:none;font-size:16px;line-height:1.4;padding:4px 4px 2px 0;min-height:28px;max-height:140px;outline:none;color:var(--ink);width:100%}
+.cbar{display:flex;align-items:center;gap:6px;min-width:0}
+.ipill{position:relative;display:inline-flex;min-width:0;max-width:62%}
+.ipill .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.ipill select{-webkit-appearance:none;appearance:none;height:34px;max-width:100%;border:0;border-radius:99px;background:var(--panel);color:var(--ink2);font:600 14px var(--font);padding:0 30px 0 14px;text-overflow:ellipsis;box-shadow:0 0 0 .5px var(--line)}
+.ipill::after{content:"";position:absolute;right:13px;top:50%;width:6px;height:6px;margin-top:-5px;border-right:1.8px solid var(--muted);border-bottom:1.8px solid var(--muted);transform:rotate(45deg);pointer-events:none}
+.ipill.picked select{background:var(--accent-soft);color:var(--accent);box-shadow:none}
+.cbtn{width:34px;height:34px;flex:none;border-radius:50%;border:0;display:grid;place-items:center;background:var(--panel);color:var(--ink2);box-shadow:0 0 0 .5px var(--line);transition:transform .3s var(--spring)}
+.cbtn svg{width:17px;height:17px}.cbtn:active{transform:scale(.9)}
+.cbtn.on{background:#ff3b30;color:#fff;box-shadow:none}
+.csend{width:38px;height:38px;flex:none;border-radius:50%;border:0;display:grid;place-items:center;background:var(--accent);color:#fff;transition:transform .3s var(--spring),opacity .2s}
+.csend svg{width:19px;height:19px}.csend:active{transform:scale(.9)}
+.csend.busy{opacity:.5;pointer-events:none}.csend.busy svg{animation:spin .8s linear infinite}
+.donerow{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.sheet.typing .rc-select{display:none}
 html.kb-open .sheet.half{top:var(--vvb);bottom:auto;translate:0 -100%;transition:transform .25s ease}
 html.kb-open .sheet .sendrow{padding-bottom:8px;padding-top:8px}
 html.kb-open .sheet.half{gap:10px}
@@ -852,12 +868,14 @@ function changeSheet(v,vid){
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>What needs changing?</h2><div class="rc-sub">${esc(v.title)} <span class="sentpill" id="sCount" hidden></span></div></div><button type="button" class="iconx" id="sClose" aria-label="Close">✕</button></div>
    ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12H3m0 0 3-3m-3 3 3 3M16 12h5m0 0-3-3m3 3-3 3"/></svg>Drag the slider to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
-   <label class="rc-select"><span class="sr">What’s the issue?</span><select id="sIssue"><option value="">What’s the issue? (tap to choose)</option><option>Remove this part</option><option>Make it shorter</option><option>Spelling mistake</option><option>Change the wording</option><option>Text too small</option><option>Text too fast</option><option>Different picture</option><option>Picture is blurry</option><option>Music too loud</option><option>Add our logo</option><option>Colour looks off</option><option>Cut ends too early</option><option value="__other">Something else… (type it below)</option></select></label>
-   <div class="rc-compose"><textarea id="sNote" rows="2" maxlength="2000" placeholder="Describe the change…"></textarea>
-     <div class="rc-tools">${vid?`<button type="button" class="tool" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="tool mic" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}</div></div>
+   <div class="cbox"><textarea id="sNote" rows="1" maxlength="2000" placeholder="Describe the change…"></textarea>
+     <div class="cbar"><label class="ipill"><span class="sr">Issue</span><select id="sIssue"><option value="">Issue type</option><option>Cut this part</option><option>Trim / shorten</option><option>Text or spelling</option><option>Music or sound</option><option>Colour or picture</option><option value="__other">Other (type it)</option></select></label>
+       <span style="flex:1"></span>
+       ${vid?`<button type="button" class="cbtn" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="cbtn" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}
+       <button type="button" class="csend" id="sSend" aria-label="Send note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
    <div class="rc-att" id="markPrev" hidden></div>
    <div class="rec" id="recBox" hidden></div>
-   <div class="msg" id="sMsg"></div><div class="sendrow" id="sendRow"><button class="btn lg" id="sDone" hidden>Done</button><button class="btn primary lg" id="sSend">Send note</button></div>`,
+   <div class="msg" id="sMsg"></div><div class="donerow" id="sendRow" hidden><button class="btn lg block" id="sDone">Done</button></div>`,
   ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=dur||99999;let picked=!vid||vid.currentTime>=1;let warned=false;
     const pickUI=()=>{const f=$("#frameBox");if(f)f.classList.toggle("needpick",!picked)};
     const paint=()=>{if(!vid)return;$("#sTime").textContent=fmt(secs);const rg=$("#sRange");rg.value=secs;rg.style.setProperty("--p",(secs/(+rg.max||1)*100)+"%")};
@@ -865,7 +883,7 @@ function changeSheet(v,vid){
     if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);if(vid.currentTime>=1){picked=true;pickUI()}paint()};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
       $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);paint();pickUI()}
     const fillSugg=()=>{};const iss=$("#sIssue");
-    iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";if(o)$("#sNote").focus()};
+    iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";iss.parentElement.querySelector("select").style.width="auto";if(o)$("#sNote").focus()};
     
     const sh=$("#sheet"),ta0=$("#sNote");
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
@@ -932,21 +950,21 @@ function changeSheet(v,vid){
       if(!note)note="Voice note";
       const type="clip";
       const whole=!vid;if(whole)secs=0;
-      const time=whole?"Whole video":fmt(secs),b=$("#sSend");b.disabled=true;b.textContent="Sending…";
+      const time=whole?"Whole video":fmt(secs),b=$("#sSend");b.disabled=true;b.classList.add("busy");
       let audio_path=null;
       if(blob){const ext=/webm/.test(blob.type)?"webm":"m4a";audio_path=`${me.id}/audio/${crypto.randomUUID()}.${ext}`;
         const up=await sb.storage.from("videos").upload(audio_path,blob,{contentType:blob.type});
-        if(up.error){b.disabled=false;b.textContent="Send note";$("#sMsg").textContent="Couldn’t upload the voice note. Try again.";return}}
+        if(up.error){b.disabled=false;b.classList.remove("busy");$("#sMsg").textContent="Couldn’t upload the voice note. Try again.";return}}
       let mark_path=null;
       if(markBlob){mark_path=`${me.id}/marks/${crypto.randomUUID()}.png`;const mu=await sb.storage.from("videos").upload(mark_path,markBlob,{contentType:"image/png"});if(mu.error)mark_path=null}
       let {error}=await sb.from("corrections").insert({video_id:v.id,type,time_label:time,seconds:secs,note,version:v.version,audio_path,mark_path});
       if(!error)({error}=await sb.rpc("set_video_status",{vid:v.id,new_status:"changes"}));
-      if(error){b.disabled=false;b.textContent="Send note";$("#sMsg").textContent="Couldn’t send. Check your connection and try again.";return}
+      if(error){b.disabled=false;b.classList.remove("busy");$("#sMsg").textContent="Couldn’t send. Check your connection and try again.";return}
       sent++;ctab="changes";
       $("#sCount").hidden=false;$("#sCount").textContent=`✓ ${sent} sent`;
       $("#sNote").value="";$("#sNote").style.height="";$("#sIssue").value="";$("#sIssue").onchange();blob=null;idle();markBlob=null;showMark();cats=new Set(["clip"]);syncCats();
       sh.classList.remove("typing");document.activeElement&&document.activeElement.blur&&document.activeElement.blur();
-      b.disabled=false;b.textContent="Add another";$("#sDone").hidden=false;$("#sendRow").classList.add("multi");
+      b.disabled=false;b.classList.remove("busy");$("#sendRow").hidden=false;
       $("#sMsg").textContent="";toast("Sent ✓ Move to the next moment to add another.");
       load().then(()=>render(true))}});
 }
