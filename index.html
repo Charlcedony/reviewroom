@@ -757,11 +757,11 @@ function playerHtml(v){if(cmp[v.id])return cmpHtml(v);const sel=vsel[v.id];if(se
     :safeLink?`<div class="ext"><span class="small">This video opens in a new tab</span><a href="${esc(safeLink)}" target="_blank" rel="noopener">Watch the video</a></div>`
     :`<div class="ext"><span class="small">No video attached yet.</span></div>`}</div>`}
 function scrubHtml(v,vnotes){if(!urls[v.id]||!vnotes.length)return"";
-  return `<div class="small muted" style="margin-bottom:-8px">Your notes on the timeline · tap a dot to jump there</div><div class="scrub" data-scrub="${v.id}" aria-label="Video timeline with note markers"><div class="rail"></div><div class="fill"></div>${vnotes.map(n=>`<span class="mk ${n.done?"done":""}" data-t="${n.seconds}" style="--c:${CATS[n.type].c}"></span>`).join("")}</div>`}
+  return `<div class="small muted" style="margin-bottom:-8px">Your notes on the timeline · tap a dot to jump there</div><div class="scrub" data-scrub="${v.id}" aria-label="Video timeline with note markers"><div class="rail"></div><div class="fill"></div>${vnotes.map(n=>`<span class="mk ${n.done?"done":""}" data-t="${n.seconds}" style="--c:var(--accent)"></span>`).join("")}</div>`}
 function noteHtml(n,admin){
   const vv=videos.find(x=>x.id===n.video_id);let txt=n.note||"";let keys=[n.type];
   const m=txt.match(/^\[([^\]]+)\]\s*/);if(m){const labs=m[1].split("+").map(x=>x.trim().toLowerCase());keys=Object.keys(CATS).filter(k=>labs.includes(CATS[k].label.toLowerCase()));if(!keys.length)keys=[n.type];txt=txt.slice(m[0].length)}
-  const tags=keys.map(k=>`<span class="tag" style="--c:${CATS[k].c}">${CATS[k].label}</span>`).join("");
+  const tags="";
   const fixedLbl=vv&&vv.version>n.version?"Fixed in v"+vv.version:"Done";
   const asking=!admin&&vv&&vv.status==="pending"&&vv.version>n.version;
   const status=asking?"":n.client_check==="still"?`<span class="chip changes" style="height:22px">${admin?"Client: still wrong":"You said: still wrong"}</span>`:n.client_check==="fixed"&&admin?`<span class="chip approved" style="height:22px">Client: fixed ✓</span>`:n.done?`<span class="chip approved" style="height:22px">${fixedLbl}</span>`:"";
@@ -823,7 +823,6 @@ function changeSheet(v,vid){
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>What needs changing?</h2><div class="rc-sub">${esc(v.title)} <span class="sentpill" id="sCount" hidden></span></div></div><button type="button" class="iconx" id="sClose" aria-label="Close">✕</button></div>
    ${vid?`<div class="rc-time" id="frameBox"><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
-   <div class="rc-chips" id="cats" role="group" aria-label="What kind of change">${Object.entries(CATS).map(([k,c],i)=>`<button type="button" data-k="${k}" class="${i?"":"on"}" aria-pressed="${!i}" style="--c:${c.c}">${c.ic}${c.label}</button>`).join("")}</div>
    <div class="sugg" id="sugg"></div>
    <div class="rc-compose"><textarea id="sNote" rows="2" maxlength="2000" placeholder="Describe the change…"></textarea>
      <div class="rc-tools">${vid?`<button type="button" class="tool" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="tool mic" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}</div></div>
@@ -835,7 +834,7 @@ function changeSheet(v,vid){
     const setT=s=>{secs=Math.max(0,Math.min(max,s));paint();if(vid){vid.pause();vid.currentTime=secs}};
     if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);paint()};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
       $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);paint()}
-    const fillSugg=()=>{$("#sugg").innerHTML=[...cats].flatMap(k=>SUGG[k].slice(0,cats.size>1?2:4)).map(t=>`<button type="button">${esc(t)}</button>`).join("")};
+    const fillSugg=()=>{$("#sugg").innerHTML=["Remove this part","Make it shorter","Spelling mistake","Change the wording","Different picture","Too fast","Music too loud","Add our logo"].map(t=>`<button type="button">${esc(t)}</button>`).join("")};
     $("#sugg").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ta=$("#sNote");ta.value=ta.value.trim()?ta.value.trim()+". "+b.textContent:b.textContent;ta.focus()};
     const sh=$("#sheet"),ta0=$("#sNote");
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
@@ -843,10 +842,7 @@ function changeSheet(v,vid){
     ta0.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==ta0)sh.classList.remove("typing")},150));
     const bye=()=>{closeSheet();if(sent)toast(`Thanks! We got your ${sent} note${sent>1?"s":""}.`)};
     $("#sClose").onclick=bye;$("#sDone").onclick=bye;
-    const syncCats=()=>{$("#cats").querySelectorAll("button").forEach(x=>{const on=cats.has(x.dataset.k);x.classList.toggle("on",on);x.setAttribute("aria-pressed",on)});fillSugg()};
-    $("#cats").onclick=e=>{const b=e.target.closest("button");if(!b)return;const k=b.dataset.k;
-      if(cats.has(k)){if(cats.size>1)cats.delete(k);else return}else cats.add(k);
-      try{navigator.vibrate&&navigator.vibrate(8)}catch(x){}syncCats()};syncCats();
+    const syncCats=()=>{};fillSugg();
     // ---- voice note ----
     let blob=null,mr=null,stream=null,tick=null;
     const recBox=$("#recBox");
@@ -902,8 +898,7 @@ function changeSheet(v,vid){
     $("#sSend").onclick=async()=>{if(mr&&mr.state==="recording"){$("#sMsg").textContent="Stop the recording first.";return}
       let note=$("#sNote").value.trim();if(!note&&markBlob&&!blob)note="See the marked spot";if(!note&&!blob){$("#sMsg").textContent="Type a note, record your voice, or draw on the video.";$("#sNote").focus();return}
       if(!note)note="Voice note";
-      const order=["clip","text","images"].filter(k=>cats.has(k)),type=order[0];
-      if(order.length>1)note="["+order.map(k=>CATS[k].label).join(" + ")+"] "+note;
+      const type="clip";
       const whole=!vid;if(whole)secs=0;
       const time=whole?"Whole video":fmt(secs),b=$("#sSend");b.disabled=true;b.textContent="Sending…";
       let audio_path=null;
