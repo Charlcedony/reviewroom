@@ -555,6 +555,9 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+html.kb-open .sheet.half{top:var(--vvb);bottom:auto;translate:0 -100%;transition:transform .25s ease}
+html.kb-open .sheet .sendrow{padding-bottom:8px;padding-top:8px}
+html.kb-open .sheet.half{gap:10px}
 .ico{width:16px;height:16px;flex:none;vertical-align:-3px}
 .pickhint{align-items:center;gap:6px}.needpick .pickhint{display:flex}
 .btn .ico{margin-right:-2px}
@@ -1205,7 +1208,7 @@ function openSheet(html,after){lastFocus=document.activeElement;$("#sheetBody").
   const first=$("#sheetBody").querySelector("input,textarea,select,button");if(first&&!first.matches("textarea"))setTimeout(()=>first.focus({preventScroll:true}),260);
   $("#sheetBody").querySelectorAll("input,textarea").forEach(el=>el.addEventListener("focus",()=>setTimeout(()=>el.scrollIntoView({block:"center",behavior:"smooth"}),300)))}
 let sheetCleanup=null;
-if(window.visualViewport){const vv=visualViewport;const fit=()=>{const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty("--kb",kb+"px");document.documentElement.style.setProperty("--vvh",(vv.height-12)+"px")};vv.addEventListener("resize",fit);vv.addEventListener("scroll",fit);fit()}
+if(window.visualViewport){const vv=visualViewport;const fit=()=>{const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty("--kb",kb+"px");document.documentElement.style.setProperty("--vvh",(vv.height-12)+"px");document.documentElement.style.setProperty("--vvb",(vv.offsetTop+vv.height)+"px");document.documentElement.classList.toggle("kb-open",kb>80)};vv.addEventListener("resize",fit);vv.addEventListener("scroll",fit);fit()}
 function closeSheet(){document.body.classList.remove("composing");setTimeout(()=>{$("#sheet").classList.remove("half","typing");$("#scrim").classList.remove("light")},260);if(sheetCleanup){try{sheetCleanup()}catch(e){}sheetCleanup=null}$("#scrim").classList.remove("show");$("#sheet").classList.remove("show");document.body.classList.remove("lock");
   setTimeout(()=>{$("#scrim").hidden=true;$("#sheet").hidden=true;if(pendingRender){pendingRender=false;render()}if(lastFocus&&lastFocus.focus)lastFocus.focus({preventScroll:true})},250)}
 $("#scrim").onclick=closeSheet;$("#sheetX").onclick=closeSheet;document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
