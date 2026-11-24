@@ -555,15 +555,20 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.shopts{display:grid;gap:8px}
+.shopt{display:flex;align-items:center;gap:12px;padding:12px;border:0;border-radius:16px;background:var(--fill2);font:inherit;color:inherit;text-align:left;box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .2s,background .2s}
+.shopt.on{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent)}
+.shopt .radio{width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--line2)}
+.shopt.on .radio{border:6px solid var(--accent)}
+.pubview{min-height:100vh;background:var(--bg);display:grid;justify-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) 16px 40px}
+.pubcard{width:min(520px,100%);display:grid;gap:14px;align-content:start}
+.pubcard h1{font-size:26px;margin-top:8px}
+.pubmeta{display:flex;flex-wrap:wrap;gap:8px}.pubmeta span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;background:var(--fill2);font-size:13px;font-weight:600;color:var(--ink2)}.pubmeta svg{width:14px;height:14px}
+.pubcard video{width:100%;max-height:62vh;border-radius:20px;background:#000}
+.pubcap{display:grid;gap:8px;padding:14px;border-radius:16px;background:var(--panel)}.pubcap p{margin:0;white-space:pre-wrap}.pubcap .btn{justify-self:start;gap:6px}.pubcap svg{width:14px;height:14px}
 .pchip.mark{background:var(--panel);color:var(--ink2)}
 .pchip .ring{width:14px;height:14px;border-radius:50%;border:1.8px solid var(--muted);flex:none}
 .pchip.mark:active .ring{background:var(--ok);border-color:var(--ok)}
-.shsteps{margin:0;padding:0;list-style:none;counter-reset:sh;display:grid;gap:8px}
-.shsteps li{counter-increment:sh;display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:var(--fill2)}
-.shsteps li::before{content:counter(sh);flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
-.shsteps li.done::before{content:"✓";background:var(--ok)}
-.shsteps li>div{flex:1;min-width:0}.shsteps b{display:block;font-size:15px}.shsteps small{font-size:12.5px;color:var(--muted)}.shsteps small b{display:inline;font-size:inherit;color:var(--ink2)}
-.shsteps .btn{flex:none;gap:6px}
 .calview{position:fixed;inset:0;z-index:110;background:var(--bg);display:grid;grid-template-rows:auto auto 1fr;transform:translateY(24px);opacity:0;transition:transform .4s var(--spring),opacity .2s}
 .calview.show{transform:none;opacity:1}
 .cvtop{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;background:var(--mat);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid var(--mat-line)}
@@ -902,6 +907,7 @@ function openDeepLink(){
 function shareLink(v){return location.origin+location.pathname+"?watch="+v.id}
 async function boot(){
   if(recovering||/type=recovery/.test(location.hash))return;
+  {const sc=new URLSearchParams(location.search).get("s");if(sc&&await showSharePage(sc))return}
   const {data:{session}}=await sb.auth.getSession();
   if(!session){showAuth(false);return}
   const {data:prof}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
@@ -1452,28 +1458,67 @@ function shareText(v){
   if(v.platforms&&v.platforms.length)lines.push(v.platforms.join(" · "));
   if(v.caption)lines.push("","Caption:",v.caption);
   return lines.join("\n")}
+async function makeShareLink(v){
+  const key="rr-share-"+v.id+"-v"+v.version;let code=null;try{code=localStorage.getItem(key)}catch(e){}
+  if(code)return location.origin+location.pathname+"?s="+code;
+  code=[...crypto.getRandomValues(new Uint8Array(6))].map(b=>"abcdefghjkmnpqrstuvwxyz23456789"[b%31]).join("");
+  const ext=(v.storage_path.split(".").pop()||"mp4").slice(0,4);
+  let ok=false;try{const c=await sb.storage.from("videos").copy(v.storage_path,code+"."+ext,{destinationBucket:"shared"});ok=!c.error}catch(e){}
+  if(!ok){const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,600);const bl=await (await fetch(data.signedUrl)).blob();
+    const up=await sb.storage.from("shared").upload(code+"."+ext,bl,{contentType:bl.type||"video/mp4"});if(up.error)throw up.error}
+  const meta={t:v.title,f:code+"."+ext,at:v.post_at||null,p:v.platforms||[],c:v.caption||"",by:"Review Room"};
+  const mu=await sb.storage.from("shared").upload(code+".json",new Blob([JSON.stringify(meta)],{type:"application/json"}),{contentType:"application/json"});if(mu.error)throw mu.error;
+  try{localStorage.setItem(key,code)}catch(e){}
+  return location.origin+location.pathname+"?s="+code}
 function shareSheet(v){
-  let file=null,blob=null,saved=false;const text=shareText(v);const nm=(v.title||"video").replace(/[^\w\- ]+/g,"").trim()||"video";
+  let file=null,blob=null,mode="video";const text=shareText(v);const nm=(v.title||"video").replace(/[^\w\- ]+/g,"").trim()||"video";
   const ext=v.storage_path?(v.storage_path.split(".").pop()||"mp4").slice(0,4):"mp4";
   const ok=f=>{try{return !!(navigator.canShare&&navigator.canShare({files:[f]}))}catch(e){return false}};
   const waIc='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.3z"/></svg>';
-  const fileIc='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 12v6M9 15l3 3 3-3"/></svg>';
-  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Send to your team</h2><div class="rc-sub">Full-quality video as a document + the plan</div></div><button type="button" class="iconx" id="shX" aria-label="Close">✕</button></div>
-    <div class="shcard"><div class="shfile"><span class="pi blue">${PI.cal}</span><span class="pt"><b>${esc(nm)}.${esc(ext)}</b><small id="shSize">Preparing video…</small></span></div><div class="shprev" id="shPrev"></div></div>
-    <ol class="shsteps">
-      <li id="st1"><div><b>Save the video to Files</b><small>In the menu that opens, tap <b>Save to Files</b>.</small></div><button class="btn primary sm" id="shSave" disabled>${fileIc}<span>Save</span></button></li>
-      <li id="st2"><div><b>Open WhatsApp and pick the chat</b><small>The plan text is filled in. Before sending, tap <b>+</b> → <b>Document</b> → choose the video.</small></div><button class="btn wa sm" id="shGo">${waIc}<span>Open</span></button></li>
-    </ol>
+  const vidIc='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg>';
+  const linkIc='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>';
+  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Send to your team</h2><div class="rc-sub">Choose how to send it on WhatsApp</div></div><button type="button" class="iconx" id="shX" aria-label="Close">✕</button></div>
+    <div class="shopts">
+      <button type="button" class="shopt on" data-mode="video"><span class="pi blue">${vidIc}</span><span class="pt"><b>Video + caption</b><small>Plays right in the chat</small></span><span class="radio"></span></button>
+      <button type="button" class="shopt" data-mode="link"><span class="pi green">${linkIc}</span><span class="pt"><b>Link + caption & plan</b><small>Short link · full quality download</small></span><span class="radio"></span></button>
+    </div>
+    <div class="shprev" id="shPrev"></div>
+    <button class="btn lg wa" id="shGo" disabled>${waIc}<span>Preparing…</span></button>
     <div class="msg" id="shMsg"></div>`,
-  async()=>{$("#shX").onclick=closeSheet;$("#shPrev").textContent=text.replace(/\*/g,"");
-    const waText=()=>{const enc=encodeURIComponent(text);if(/android|iphone|ipad|ipod/i.test(navigator.userAgent)){location.href="whatsapp://send?text="+enc;setTimeout(()=>{if(!document.hidden)window.open("https://wa.me/?text="+enc,"_blank","noopener")},1200)}else window.open("https://wa.me/?text="+enc,"_blank","noopener")};
-    $("#shGo").onclick=()=>{try{navigator.clipboard&&navigator.clipboard.writeText(text)}catch(e){}waText()};
+  async()=>{$("#shX").onclick=closeSheet;const go=$("#shGo"),lbl=go.querySelector("span");
+    const preview=link=>{$("#shPrev").textContent=(mode==="video"?(v.caption||text):text+(link?"\n\n▶ Watch & download:\n"+link:"\n\n▶ Watch & download:\n"+location.host+location.pathname+"?s=…")).replace(/\*/g,"")};
+    const setMode=m=>{mode=m;$("#sheetBody").querySelectorAll(".shopt").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));preview();lbl.textContent=m==="video"?(file?"Send on WhatsApp":blob?"Send on WhatsApp":"Preparing…"):"Send on WhatsApp";go.disabled=m==="video"&&!blob&&!!v.storage_path};
+    $("#sheetBody").querySelectorAll(".shopt").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+    const waText=t=>{const enc=encodeURIComponent(t);if(/android|iphone|ipad|ipod/i.test(navigator.userAgent)){location.href="whatsapp://send?text="+enc;setTimeout(()=>{if(!document.hidden)window.open("https://wa.me/?text="+enc,"_blank","noopener")},1200)}else window.open("https://wa.me/?text="+enc,"_blank","noopener")};
+    setMode("video");
     if(v.storage_path){try{const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,600);blob=await (await fetch(data.signedUrl)).blob();
-      const f=new File([blob],nm+"."+ext,{type:blob.type||"video/mp4"});if(ok(f))file=f;
-      $("#shSize").textContent=(blob.size/1048576).toFixed(1)+" MB · full quality"}catch(e){$("#shSize").textContent="Couldn’t load the video"}}
-    const sv=$("#shSave");sv.disabled=false;
-    sv.onclick=async()=>{if(file){try{await navigator.share({files:[file]});saved=true;$("#st1").classList.add("done");sv.querySelector("span").textContent="Saved"}catch(e){if(e&&e.name!=="AbortError")$("#shMsg").textContent="Couldn’t open the menu. Try again."}}
-      else if(blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nm+"."+ext;document.body.appendChild(a);a.click();a.remove();$("#st1").classList.add("done")}}})}
+      const f=new File([blob],nm+"."+ext,{type:blob.type||"video/mp4"});if(ok(f))file=f}catch(e){}}
+    setMode(mode);
+    go.onclick=async()=>{$("#shMsg").textContent="";
+      if(mode==="video"){if(!file){$("#shMsg").textContent="This browser can’t attach videos. Open the app on your phone, or choose the link option.";return}
+        try{await navigator.share({files:[file],text:v.caption||text});closeSheet();toast("Sent ✓")}catch(e){if(e&&e.name!=="AbortError")$("#shMsg").textContent="Sharing didn’t open. Please try again."}return}
+      if(!v.storage_path){waText(text);return}
+      go.disabled=true;lbl.textContent="Creating link…";
+      try{const link=await makeShareLink(v);preview(link);lbl.textContent="Send on WhatsApp";go.disabled=false;waText(text+"\n\n▶ Watch & download:\n"+link)}
+      catch(e){go.disabled=false;lbl.textContent="Send on WhatsApp";$("#shMsg").textContent="Couldn’t create the link. Try again."}}})}
+async function showSharePage(code){
+  if(!/^[a-z0-9]{4,16}$/.test(code))return false;
+  const base=SUPABASE_URL+"/storage/v1/object/public/shared/";
+  let m=null;try{const r=await fetch(base+code+".json",{cache:"no-store"});if(r.ok)m=await r.json()}catch(e){}
+  $("#authView").hidden=true;$("#appView").hidden=true;
+  const el=document.createElement("div");el.className="pubview";document.body.appendChild(el);
+  if(!m){el.innerHTML=`<div class="pubcard"><div class="logo"><i></i><span>Review Room</span></div><h1>This link has expired</h1><p class="muted">Ask the sender for a new link.</p></div>`;return true}
+  const vurl=base+encodeURIComponent(m.f);const when=m.at?postWhen(m.at):"";
+  el.innerHTML=`<div class="pubcard">
+    <div class="logo"><i></i><span>Review Room</span></div>
+    <h1>${esc(m.t)}</h1>
+    ${when||(m.p&&m.p.length)?`<div class="pubmeta">${when?`<span>${PI.cal}${esc(when)}</span>`:""}${m.p&&m.p.length?`<span>${esc(m.p.join(" · "))}</span>`:""}</div>`:""}
+    <video controls playsinline preload="metadata" src="${esc(vurl)}#t=0.1"></video>
+    <a class="btn primary lg block" href="${esc(vurl)}" download="${esc((m.t||"video").replace(/[^\w\- ]+/g,"").trim()||"video")}">Download video</a>
+    ${m.c?`<div class="pubcap"><div class="label">Caption</div><p>${esc(m.c)}</p><button class="btn sm" id="pubCopy">${PI.copy}Copy caption</button></div>`:""}
+  </div>`;
+  const cp=el.querySelector("#pubCopy");if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(m.c);toast("Caption copied ✓")}catch(e){prompt("Copy:",m.c)}};
+  return true}
 function downloadIcs(v){const a=document.createElement("a");a.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(icsFor(v));a.download=(v.title||"post").replace(/[^\w ]+/g,"").trim()+".ics";document.body.appendChild(a);a.click();a.remove()}
 // 4) content calendar
 function calendarSheet(){
