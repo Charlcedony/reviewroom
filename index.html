@@ -556,9 +556,10 @@ body.composing .dock{visibility:hidden}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
 .player:has(.drv){grid-template-columns:minmax(0,1fr);overflow:hidden}
-.drv{position:relative;width:100%;min-width:0;max-width:100%;height:min(62vh,640px);margin:0 auto;background:#000;overflow:hidden}
+.drv{position:relative;width:100%;min-width:0;max-width:100%;aspect-ratio:16/9;margin:0 auto;background:#000;overflow:hidden}
+.drvlink{display:flex;justify-content:flex-end;padding:6px 12px 0}.drvlink a{font-size:13px;font-weight:600;color:var(--accent);text-decoration:none}
 .drv iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-.app.client .player .drv{height:max(300px,min(62vh,calc(100dvh - 400px)))}
+
 .mantime{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 8px 8px 14px;border-radius:14px;background:var(--fill2);font-size:14px;font-weight:600}
 .mantime input{width:84px;height:36px;border:0;border-radius:10px;background:var(--panel);text-align:center;font:600 16px var(--mono);color:var(--ink)}
 .storage{padding:14px 16px;margin-bottom:12px;display:grid;gap:8px}
@@ -985,7 +986,7 @@ function playerHtml(v){if(cmp[v.id])return cmpHtml(v);const sel=vsel[v.id];if(se
   const u=urls[v.id];const safeLink=/^https:\/\//i.test(v.link||"")?v.link:"";
   return `<div class="player">${u?`<span class="ptag ${isAdmin()&&v.due_date&&v.status==="pending"&&/^Was due/.test(dueTxt(v.due_date))?"late":""}">v${v.version}${isAdmin()&&v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
     :v.storage_path?`<div class="ext"><span class="small">The video couldn’t load.</span><button class="btn sm" onclick="load().then(()=>render())">Try again</button></div>`
-    :safeLink&&driveId(safeLink)?`<div class="drv"><iframe src="https://drive.google.com/file/d/${esc(driveId(safeLink))}/preview" allow="autoplay; fullscreen" allowfullscreen loading="lazy" title="Video"></iframe></div>`
+    :safeLink&&driveId(safeLink)?`<div class="drv"><iframe src="https://drive.google.com/file/d/${esc(driveId(safeLink))}/preview" allow="autoplay; fullscreen" allowfullscreen loading="lazy" title="Video"></iframe></div><div class="drvlink"><a href="https://drive.google.com/file/d/${esc(driveId(safeLink))}/view" target="_blank" rel="noopener">Open full screen in Google Drive ↗</a></div>`
     :safeLink?`<div class="ext"><span class="small">This video opens in a new tab</span><a href="${esc(safeLink)}" target="_blank" rel="noopener">Watch the video</a></div>`
     :`<div class="ext"><span class="small">No video attached yet.</span></div>`}</div>`}
 function scrubHtml(v,vnotes){if(!urls[v.id]||!vnotes.length)return"";
