@@ -555,7 +555,7 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
-.won.top{margin:0 12px 12px;padding:14px}.won.top .btn{min-height:50px}
+.won.wonfirst{margin:0 12px 12px;padding:14px}.won.wonfirst .btn{min-height:50px}
 .swipe{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 6px;scrollbar-width:none}
 .swipe::-webkit-scrollbar{display:none}
 .swipe>*{flex:0 0 84%;scroll-snap-align:start;margin:0}
@@ -928,7 +928,7 @@ function clientVideo(v){
     const rate=v.rating?`<div class="rate1"><span>You rated us</span><span class="starsTxt">${"★".repeat(v.rating)}</span><span class="small muted">Thank you!</span></div>`
       :`<div class="rate1"><span>How did we do?</span><div class="stars sm">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`;
     return `<article class="card video rise">${head}
-     <div class="won top"><div class="won-top"><div class="dl-ic">${PI.check}</div><div><b>Your final video is ready</b><span>Approved ${ago(v.updated_at||v.created_at)} · version ${v.version}</span></div></div>${dl}</div>
+     <div class="won wonfirst"><div class="won-top"><div class="dl-ic">${PI.check}</div><div><b>Your final video is ready</b><span>Approved ${ago(v.updated_at||v.created_at)} · version ${v.version}</span></div></div>${dl}</div>
      ${playerHtml(v)}
      <div class="vbody">
       <div class="swipe">${planCard(v)}${rate}</div>
