@@ -555,6 +555,21 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.genlink{border:0;background:none;padding:0;margin:-6px 0 -4px;justify-self:start;color:var(--accent);font:600 13px var(--font)}
+.cbox .rc-att{padding:6px 8px;border-radius:12px;font-size:13px;margin:0 6px 2px 0}
+.won{display:grid;gap:12px;padding:16px;border-radius:20px;background:linear-gradient(160deg,color-mix(in srgb,var(--ok) 16%,var(--panel)),var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ok) 25%,transparent)}
+.won-top{display:flex;gap:12px;align-items:center}.won-top b{display:block;font-size:17px}.won-top span{font-size:13px;color:var(--muted)}
+.won .dl-ic svg{width:20px;height:20px}
+.perks{display:flex;flex-wrap:wrap;gap:6px}.perks span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;background:var(--panel);font-size:12.5px;font-weight:600;color:var(--ink2)}
+.perks svg{width:13px;height:13px;color:var(--ok)}
+.rate1{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:16px;background:var(--fill2);font-weight:600;font-size:14px}
+.stars.sm button{font-size:26px}
+.more{border-radius:16px;background:var(--fill2)}
+.more summary{list-style:none;padding:12px 14px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer;display:flex;justify-content:space-between}
+.more summary::-webkit-details-marker{display:none}.more summary::after{content:"›";transform:rotate(90deg);font-size:18px;line-height:1}
+.more[open] summary::after{transform:rotate(-90deg)}
+.more-in{display:grid;gap:12px;padding:0 14px 14px}
+.more-acts{display:flex;gap:8px;flex-wrap:wrap}
 .plan{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:var(--accent-soft)}
 .plan b{display:block}.plan span{display:block;font-size:13px;color:var(--muted)}
 .plan-ic{width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center;background:var(--accent);color:#fff}.plan-ic svg{width:20px;height:20px}
@@ -875,22 +890,31 @@ function clientHome(){
 }
 function clientVideo(v){
   const vn=notes.filter(n=>n.video_id===v.id);
-  return `<article class="card video rise">
-   <header class="vhead"><div style="min-width:0"><h3>${esc(v.title)}</h3><div class="vsub"><span class="dotc ${v.status}"></span>${CLIENT_STATUS[v.status]}${v.status==="pending"&&v.due_date&&!/^Was due/.test(dueTxt(v.due_date))?" · Please review "+dueTxt(v.due_date).replace(/^Due /,"").replace(/^(\d|[A-Z][a-z]{2} )/,"by $1"):" · Updated "+ago(v.updated_at||v.created_at)}</div></div></header>
+  const head=`<header class="vhead"><div style="min-width:0"><h3>${esc(v.title)}</h3><div class="vsub"><span class="dotc ${v.status}"></span>${CLIENT_STATUS[v.status]}${v.status==="pending"&&v.due_date&&!/^Was due/.test(dueTxt(v.due_date))?" · Please review "+dueTxt(v.due_date).replace(/^Due /,"").replace(/^(\d|[A-Z][a-z]{2} )/,"by $1"):" · Updated "+ago(v.updated_at||v.created_at)}</div></div></header>`;
+  const fromTeam=v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:"";
+  if(v.status==="approved"){
+    const dl=v.storage_path?`<button class="btn primary lg block" data-dl="${v.id}">Download final video</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary lg block" href="${esc(v.link)}" target="_blank" rel="noopener">Open final video</a>`:"";
+    const rate=v.rating?`<div class="rate1"><span>You rated us</span><span class="starsTxt">${"★".repeat(v.rating)}</span></div>`
+      :`<div class="rate1"><span>Rate this project</span><div class="stars sm">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`;
+    return `<article class="card video rise">${head}${playerHtml(v)}
+     <div class="vbody">
+      <div class="won"><div class="won-top"><div class="dl-ic">${PI.check}</div><div><b>Your final video is ready</b><span>Approved ${ago(v.updated_at||v.created_at)} · version ${v.version}</span></div></div>
+        <div class="perks"><span>${PI.check}Full-quality file</span><span>${PI.check}Ready caption</span><span>${PI.check}Posting reminder</span></div>${dl}</div>
+      ${planCard(v)}
+      ${rate}
+      <details class="more"><summary>History & options</summary><div class="more-in">
+        ${cmpBtn(v)}${fromTeam}${notesByVersion(v,false)||'<div class="small muted">No notes on this video.</div>'}
+        <div class="more-acts"><button class="btn sm" data-change="${v.id}">Add a note</button><button class="btn ghost sm" data-undo="${v.id}">Undo approval</button></div></div></details>
+     </div></article>`}
+  return `<article class="card video rise">${head}
    ${playerHtml(v)}
    ${v.status==="pending"?`<div class="dock"><button class="btn fix lg" data-change="${v.id}">Request changes</button><button class="btn ok lg" data-approve="${v.id}">Approve</button></div>`:""}
    <div class="vbody">
     ${(()=>{const fx=v.status==="pending"?vn.filter(n=>n.done&&n.version<v.version&&!n.client_check).length:0;return fx?`<div class="banner ok">We made ${fx} change${fx>1?"s":""} you asked for. Please check ${fx>1?"them":"it"} below.</div>`:""})()}
     ${cmpBtn(v)}
-    ${v.message?`<div class="note-from"><div class="label">Message from the team</div><p>${esc(v.message)}</p></div>`:""}
+    ${fromTeam}
     ${scrubHtml(v,vn)}
-    ${v.status==="pending"?``
-    :v.status==="changes"?`<div class="banner fix">We received your notes and are working on them.</div><button class="btn sm" data-change="${v.id}" style="justify-self:start">Add another note</button>`
-    :`<div class="deliver"><div class="dl-ic">✓</div><div style="min-width:0;flex:1"><b>Final video ready</b><span class="small muted">v${v.version} · approved${v.updated_at?" "+ago(v.updated_at):""}</span></div>${v.storage_path?`<button class="btn primary" data-dl="${v.id}">Download</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary" href="${esc(v.link)}" target="_blank" rel="noopener">Open</a>`:""}</div>
-      ${v.rating?`<div class="small muted">You rated us <span class="starsTxt">${"★".repeat(v.rating)}</span> · thank you!</div>`:`<div class="rate"><b>How was working with us on this video?</b><div class="stars">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`}
-      ${planCard(v)}
-      <button class="btn ghost sm" data-undo="${v.id}" style="justify-self:start">Undo approval</button>`}
-    <button class="btn ghost sm" data-msg="${v.id}" style="justify-self:start"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Message the team</button>
+    ${v.status==="changes"?`<div class="banner fix">We received your notes and are working on them.</div><button class="btn sm" data-change="${v.id}" style="justify-self:start">Add a note or message</button>`:""}
     ${notesByVersion(v,false)}
    </div></article>`;
 }
@@ -905,13 +929,13 @@ function changeSheet(v,vid){
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>What needs changing?</h2><div class="rc-sub">${esc(v.title)} <span class="sentpill" id="sCount" hidden></span></div></div><button type="button" class="iconx" id="sClose" aria-label="Close">✕</button></div>
    ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12H3m0 0 3-3m-3 3 3 3M16 12h5m0 0-3-3m3 3-3 3"/></svg>Drag the slider to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
+   ${vid?`<button type="button" class="genlink" id="sGen">Not about one moment? Send a general message</button>`:""}
    <div class="msg" id="sMsg"></div>
-   <div class="cbox"><textarea id="sNote" rows="1" maxlength="2000" placeholder="Describe the change…"></textarea><div class="crec" id="recBox" hidden></div>
+   <div class="cbox"><textarea id="sNote" rows="1" maxlength="2000" placeholder="Describe the change…"></textarea><div class="crec" id="recBox" hidden></div><div class="rc-att" id="markPrev" hidden></div>
      <div class="cbar"><label class="ipill"><span class="sr">Issue</span><select id="sIssue"><option value="">Issue type</option><option>Cut this part</option><option>Trim / shorten</option><option>Text or spelling</option><option>Music or sound</option><option>Colour or picture</option><option value="__other">Other (type it)</option></select></label>
        <span style="flex:1"></span>
        ${vid?`<button type="button" class="cbtn" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="cbtn" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}
        <button type="button" class="csend" id="sSend" aria-label="Send note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
-   <div class="rc-att" id="markPrev" hidden></div>
    <div class="donerow" id="sendRow" hidden><button class="btn lg block" id="sDone">Done</button></div>`,
   ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=dur||99999;let picked=!vid||vid.currentTime>=1;let warned=false;
     const pickUI=()=>{const f=$("#frameBox");if(f)f.classList.toggle("needpick",!picked)};
@@ -919,6 +943,7 @@ function changeSheet(v,vid){
     const setT=s=>{secs=Math.max(0,Math.min(max,s));picked=true;pickUI();paint();if(vid){vid.pause();vid.currentTime=secs}};
     if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);if(vid.currentTime>=1){picked=true;pickUI()}paint()};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
       $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);paint();pickUI()}
+    let general=false;if($("#sGen"))$("#sGen").onclick=()=>{general=!general;$("#frameBox").hidden=general;if($("#drawBtn"))$("#drawBtn").hidden=general;picked=true;$("#sGen").textContent=general?"← Pick a moment instead":"Not about one moment? Send a general message";$("#sNote").placeholder=general?"Your message to the team…":"Describe the change…";$("#sMsg").textContent="";if(general)$("#sNote").focus()};
     const fillSugg=()=>{};const iss=$("#sIssue");
     iss.onchange=()=>{const o=iss.value==="__other";iss.parentElement.classList.toggle("picked",!!iss.value);$("#sNote").placeholder=o?"Type the issue…":iss.value?"Add details (optional)":"Describe the change…";iss.parentElement.querySelector("select").style.width="auto";if(o)$("#sNote").focus()};
     
@@ -986,8 +1011,8 @@ function changeSheet(v,vid){
       if(!picked&&!warned){warned=true;$("#sMsg").textContent="Is this about 0:00? Drag the slider to the right moment, or tap Send again.";const f=$("#frameBox");f&&f.scrollIntoView({block:"nearest"});return}
       if(!note)note="Voice note";
       const type="clip";
-      const whole=!vid;if(whole)secs=0;
-      const time=whole?"Whole video":fmt(secs),b=$("#sSend");b.disabled=true;b.classList.add("busy");
+      const whole=!vid||general;if(whole)secs=0;
+      const time=general?"Message":whole?"Whole video":fmt(secs),b=$("#sSend");b.disabled=true;b.classList.add("busy");
       let audio_path=null;
       if(blob){const ext=/webm/.test(blob.type)?"webm":"m4a";audio_path=`${me.id}/audio/${crypto.randomUUID()}.${ext}`;
         const up=await sb.storage.from("videos").upload(audio_path,blob,{contentType:blob.type});
