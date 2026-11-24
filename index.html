@@ -555,6 +555,40 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.calview{position:fixed;inset:0;z-index:110;background:var(--bg);display:grid;grid-template-rows:auto auto 1fr;transform:translateY(24px);opacity:0;transition:transform .4s var(--spring),opacity .2s}
+.calview.show{transform:none;opacity:1}
+.cvtop{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;background:var(--mat);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid var(--mat-line)}
+.cvback{width:36px;height:36px;border:0;border-radius:50%;background:var(--fill);font-size:24px;line-height:1;color:var(--ink)}
+.cvtitle{flex:1;min-width:0}.cvtitle b{display:block;font-size:17px}.cvtitle small{font-size:12.5px;color:var(--muted)}
+.cvmode{width:140px;flex:none}
+.cvnav{display:flex;align-items:center;gap:6px;padding:10px 14px 6px}
+.cvnav b{flex:1;text-align:center;font-size:17px}
+.cvnav button{border:0;background:var(--fill2);border-radius:99px;height:32px;min-width:32px;padding:0 10px;font:600 15px var(--font);color:var(--ink)}
+.cvnav .cvtoday{font-size:13px;color:var(--accent)}
+.cvbody{overflow:auto;padding:0 10px calc(24px + env(safe-area-inset-bottom,0px));display:grid;align-content:start;gap:14px;max-width:900px;width:100%;margin:0 auto}
+.cvgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.cvwk{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px 0}
+.cvday{min-height:72px;border:0;border-radius:10px;background:var(--panel);padding:4px 3px;display:flex;flex-direction:column;gap:2px;align-items:stretch;text-align:left;font:inherit;color:inherit;overflow:hidden}
+.cvday .n{font-size:12px;font-weight:600;width:22px;height:22px;display:grid;place-items:center;border-radius:50%;align-self:flex-start}
+.cvday.out{opacity:.4}.cvday.today .n{background:var(--accent);color:#fff}
+.cvday.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.cvchip{display:block;font-size:9.5px;font-weight:600;line-height:1.2;padding:2px 4px;border-radius:5px;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--ink);border-left:2.5px solid var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cvchip.posted{opacity:.5;text-decoration:line-through}
+.cvmore{font-size:10px;font-weight:700;color:var(--muted);padding-left:3px}
+.cvsel,.cvlist{display:grid;gap:8px}
+.cvsel-h{font-size:13px;font-weight:700;color:var(--muted);padding:4px 4px 0;display:flex;gap:6px;align-items:center}.cvsel-h span{background:var(--accent);color:#fff;border-radius:99px;padding:0 7px;font-size:11px}
+.cvpost{display:flex;align-items:center;gap:10px;padding:12px;border:0;border-radius:14px;background:var(--panel);font:inherit;color:inherit;text-align:left;width:100%}
+.cvtime{font:600 13px var(--mono);min-width:64px;color:var(--ink2)}
+.cvbar{width:3px;align-self:stretch;border-radius:3px}
+.cvtxt{flex:1;min-width:0}.cvtxt b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cvtxt small{font-size:12.5px;color:var(--muted)}
+.cvpost.due .cvtxt small{color:#ff9500;font-weight:600}.cvpost.posted{opacity:.55}
+.cvdots{display:flex;gap:3px}.cvdots i,.cvlegend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.cvempty{padding:16px;border-radius:14px;background:var(--panel);color:var(--muted);font-size:14px;text-align:center}
+.cvtray-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.cvtray-row::-webkit-scrollbar{display:none}
+.cvcard{flex:0 0 150px;display:grid;gap:6px;padding:12px;border:0;border-radius:16px;background:var(--panel);text-align:left;font:inherit;color:inherit}
+.cvcard b{font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cvcard small{font-size:12px;color:var(--accent);font-weight:600}
+.cvlegend{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;font-size:12px;color:var(--muted)}.cvlegend span{display:flex;align-items:center;gap:5px}
+@media (min-width:700px){.cvday{min-height:96px}.cvchip{font-size:11px}}
 .cbar #recBtn{width:38px;height:38px;background:var(--accent);color:#fff;box-shadow:none}.cbar #recBtn svg{width:19px;height:19px}
 .cbar #recBtn,.cbar #sSend{animation:pop .22s var(--spring)}
 @keyframes pop{from{transform:scale(.6);opacity:0}}
@@ -1432,19 +1466,43 @@ function shareSheet(v){
 function downloadIcs(v){const a=document.createElement("a");a.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(icsFor(v));a.download=(v.title||"post").replace(/[^\w ]+/g,"").trim()+".ics";document.body.appendChild(a);a.click();a.remove()}
 // 4) content calendar
 function calendarSheet(){
-  const planned=videos.filter(v=>v.post_at).sort((a,b)=>new Date(a.post_at)-new Date(b.post_at));
-  const todo=videos.filter(v=>v.status==="approved"&&!v.post_at);
-  const now=new Date(),days=[...Array(14)].map((_,i)=>{const d=new Date(now);d.setDate(d.getDate()+i);d.setHours(0,0,0,0);return d});
-  const has=d=>planned.some(v=>new Date(v.post_at).toDateString()===d.toDateString());
-  const strip=`<div class="calstrip">${days.map(d=>`<div class="cday ${has(d)?"has":""} ${d.toDateString()===now.toDateString()?"today":""}"><small>${d.toLocaleDateString(undefined,{weekday:"short"})[0]}</small><b>${d.getDate()}</b><i></i></div>`).join("")}</div>`;
-  const groups={};planned.forEach(v=>{const k=new Date(v.post_at).toDateString();(groups[k]=groups[k]||[]).push(v)});
-  const list=Object.entries(groups).map(([k,vs])=>{const d=new Date(k);const lbl=d.toDateString()===now.toDateString()?"Today":d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"});
-    return `<div class="calgrp"><div class="label">${lbl}</div>${vs.map(v=>`<button class="calrow ${v.posted?"posted":""}" data-cplan="${v.id}"><span class="ct">${new Date(v.post_at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}</span><span style="min-width:0;flex:1;text-align:left"><b>${esc(v.title)}</b><small>${v.posted?"✓ Posted":esc((v.platforms||[]).join(" · "))}</small></span><span class="chev">›</span></button>`).join("")}</div>`}).join("");
-  openSheet(`<div class="rc-head"><div style="min-width:0"><h2>Content calendar</h2><div class="rc-sub">${planned.filter(v=>!v.posted).length} post${planned.filter(v=>!v.posted).length===1?"":"s"} scheduled</div></div><button type="button" class="iconx" id="cX" aria-label="Close">✕</button></div>
-    ${strip}
-    ${list||'<div class="empty small">Nothing scheduled yet. Pick a video below to plan its post.</div>'}
-    ${todo.length?`<div class="calgrp"><div class="label">Ready to schedule</div>${todo.map(v=>`<button class="calrow todo" data-cplan="${v.id}"><span class="ct">${PI.cal}</span><span style="min-width:0;flex:1;text-align:left"><b>${esc(v.title)}</b><small>Approved · not scheduled</small></span><span class="chev">›</span></button>`).join("")}</div>`:""}`,
-  ()=>{$("#cX").onclick=closeSheet;$("#sheetBody").querySelectorAll("[data-cplan]").forEach(b=>b.onclick=()=>{const v=videos.find(x=>x.id===b.dataset.cplan);closeSheet();setTimeout(()=>planSheet(v),300)})})}
+  document.querySelectorAll(".calview").forEach(x=>x.remove());
+  const now=new Date();let ym=new Date(now.getFullYear(),now.getMonth(),1),sel=new Date(now.toDateString()),mode="month";
+  const PC={"Instagram":"#e1306c","YouTube Shorts":"#ff0033","Facebook":"#1877f2","WhatsApp Status":"#25d366"};
+  const el=document.createElement("div");el.className="calview";document.body.appendChild(el);document.body.classList.add("lock");
+  const posts=()=>videos.filter(v=>v.post_at).sort((a,b)=>new Date(a.post_at)-new Date(b.post_at));
+  const onDay=d=>posts().filter(v=>new Date(v.post_at).toDateString()===d.toDateString());
+  const time=v=>new Date(v.post_at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  const dots=v=>(v.platforms||[]).map(p=>`<i style="background:${PC[p]||"var(--accent)"}"></i>`).join("");
+  const row=v=>`<button class="cvpost ${v.posted?"posted":new Date(v.post_at)<Date.now()?"due":""}" data-open-plan="${v.id}"><span class="cvtime">${time(v)}</span><span class="cvbar" style="background:${PC[(v.platforms||[])[0]]||"var(--accent)"}"></span><span class="cvtxt"><b>${esc(v.title)}</b><small>${v.posted?"✓ Posted · ":new Date(v.post_at)<Date.now()?"Time to post · ":""}${esc((v.platforms||[]).join(" · "))}</small></span><span class="cvdots">${dots(v)}</span></button>`;
+  const draw=()=>{
+    const todo=videos.filter(v=>v.status==="approved"&&!v.post_at);
+    const upcoming=posts().filter(v=>!v.posted&&new Date(v.post_at)>=new Date(now.toDateString())).length;
+    let body="";
+    if(mode==="month"){
+      const first=new Date(ym);const start=new Date(first);start.setDate(1-((first.getDay()+6)%7));
+      const cells=[...Array(42)].map((_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});
+      const wk=["M","T","W","T","F","S","S"];
+      body=`<div class="cvgrid">${wk.map(w=>`<div class="cvwk">${w}</div>`).join("")}${cells.map(d=>{const ps=onDay(d);const out=d.getMonth()!==ym.getMonth();
+        return `<button class="cvday ${out?"out":""} ${d.toDateString()===now.toDateString()?"today":""} ${d.toDateString()===sel.toDateString()?"sel":""}" data-day="${d.toDateString()}"><span class="n">${d.getDate()}</span>${ps.slice(0,2).map(v=>`<span class="cvchip ${v.posted?"posted":""}" style="--c:${PC[(v.platforms||[])[0]]||"var(--accent)"}">${esc(v.title)}</span>`).join("")}${ps.length>2?`<span class="cvmore">+${ps.length-2}</span>`:""}</button>`}).join("")}</div>
+        <div class="cvsel"><div class="cvsel-h">${sel.toDateString()===now.toDateString()?"Today":sel.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</div>${onDay(sel).map(row).join("")||`<div class="cvempty">Nothing planned this day.${todo.length?` <button class="link" data-plan-day>Schedule a video here</button>`:""}</div>`}</div>`;
+    }else{
+      const groups={};posts().filter(v=>new Date(v.post_at)>=new Date(now.toDateString())||!v.posted).forEach(v=>{const k=new Date(v.post_at).toDateString();(groups[k]=groups[k]||[]).push(v)});
+      body=`<div class="cvlist">${Object.entries(groups).map(([k,vs])=>{const d=new Date(k);return `<div class="cvsel-h">${d.toDateString()===now.toDateString()?"Today":d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"})}</div>${vs.map(row).join("")}`}).join("")||'<div class="cvempty">No upcoming posts yet.</div>'}</div>`}
+    el.innerHTML=`<header class="cvtop"><button class="cvback" id="cvX" aria-label="Back">‹</button><div class="cvtitle"><b>Content calendar</b><small>${upcoming} upcoming post${upcoming===1?"":"s"}</small></div><div class="seg2 cvmode"><button class="${mode==="month"?"on":""}" data-mode="month">Month</button><button class="${mode==="list"?"on":""}" data-mode="list">List</button></div></header>
+      ${mode==="month"?`<div class="cvnav"><button data-m="-1" aria-label="Previous month">‹</button><b>${ym.toLocaleDateString(undefined,{month:"long",year:"numeric"})}</b><button data-m="1" aria-label="Next month">›</button><button class="cvtoday" data-today>Today</button></div>`:""}
+      <div class="cvbody">${body}
+      ${todo.length?`<div class="cvtray"><div class="cvsel-h">Ready to schedule <span>${todo.length}</span></div><div class="cvtray-row">${todo.map(v=>`<button class="cvcard" data-open-plan="${v.id}"><span class="pi blue">${PI.cal}</span><b>${esc(v.title)}</b><small>Tap to schedule</small></button>`).join("")}</div></div>`:""}
+      <div class="cvlegend">${Object.entries(PC).map(([k,c])=>`<span><i style="background:${c}"></i>${k}</span>`).join("")}</div></div>`;
+    el.querySelector("#cvX").onclick=close;
+    el.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{mode=b.dataset.mode;draw()});
+    el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ym=new Date(ym.getFullYear(),ym.getMonth()+ +b.dataset.m,1);draw()});
+    const t=el.querySelector("[data-today]");if(t)t.onclick=()=>{ym=new Date(now.getFullYear(),now.getMonth(),1);sel=new Date(now.toDateString());draw()};
+    el.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{sel=new Date(b.dataset.day);draw()});
+    el.querySelectorAll("[data-open-plan]").forEach(b=>b.onclick=()=>{const v=videos.find(x=>x.id===b.dataset.openPlan);close();setTimeout(()=>planSheet(v),200)});
+    const pd=el.querySelector("[data-plan-day]");if(pd)pd.onclick=()=>{const v=todo[0];close();setTimeout(()=>{planSheet(v);const d=new Date(sel);d.setHours(19,0,0,0);const pad=n=>String(n).padStart(2,"0");const i=$("#pAt");if(i){i.value=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T19:00`;i.oninput&&i.oninput()}},250)}};
+  function close(){el.classList.remove("show");document.body.classList.remove("lock");setTimeout(()=>el.remove(),250)}
+  draw();requestAnimationFrame(()=>el.classList.add("show"))}
 function icsFor(v){const t=new Date(v.post_at),e=new Date(t.getTime()+15*60e3),f=x=>x.toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
   const esc2=x=>String(x||"").replace(/[\\,;]/g,m=>"\\"+m).replace(/\n/g,"\\n");
   return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Review Room//EN","BEGIN:VEVENT","UID:"+v.id+"@reviewroom","DTSTAMP:"+f(new Date()),"DTSTART:"+f(t),"DTEND:"+f(e),
