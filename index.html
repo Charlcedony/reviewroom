@@ -555,6 +555,12 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 18px}
+.fsearch{flex:1 1 240px;display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border-radius:12px;background:var(--panel);box-shadow:var(--lift)}
+.fsearch svg{width:17px;height:17px;color:var(--muted);flex:none}.fsearch input{flex:1;min-width:0;border:0;background:none;font:500 15px var(--font);color:var(--ink);outline:none}
+.fsel{-webkit-appearance:none;appearance:none;height:42px;padding:0 32px 0 14px;border:0;border-radius:12px;background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;font:600 14px var(--font);color:var(--ink);box-shadow:var(--lift)}
+.fclear{border:0;background:none;color:var(--accent);font:600 14px var(--font);padding:0 6px;height:42px}
+@media (max-width:640px){.fsel{flex:1 1 40%}}
 .linkhint{display:grid;gap:4px;padding:12px 14px;border-radius:14px;background:var(--accent-soft);font-size:13.5px;color:var(--ink2)}.linkhint>b{color:var(--ink);font-size:15px}
 .toast{top:calc(env(safe-area-inset-top,0px) + 66px)!important;bottom:auto!important;transform:translate(-50%,-14px)!important;font-size:14px!important;padding:10px 16px!important;max-width:min(86vw,420px)!important;line-height:1.3;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
 .toast.show{transform:translate(-50%,0)!important}
@@ -880,7 +886,16 @@ const dueTxt=d=>{if(!d)return"";const days=Math.round((new Date(d+"T00:00:00")-n
 function toast(t,bad){const el=$("#toast");el.textContent=t;el.className="toast show"+(bad?" bad":"");clearTimeout(el._t);el._t=setTimeout(()=>el.className="toast",3800)}
 
 // ================= state =================
-let cmp={};
+let cmp={};let fq="",fclient="",fsort="recent";
+function fv(list){const q=fq.trim().toLowerCase();let out=list.filter(v=>(!fclient||v.client_id===fclient)&&(!q||(v.title||"").toLowerCase().includes(q)||nameOf(v.client_id).toLowerCase().includes(q)));
+  const t=v=>new Date(v.updated_at||v.created_at).getTime();
+  if(fsort==="oldest")out.sort((a,b)=>t(a)-t(b));else if(fsort==="notes")out.sort((a,b)=>openNotes(b).length-openNotes(a).length);
+  else if(fsort==="due")out.sort((a,b)=>(a.due_date?new Date(a.due_date).getTime():9e15)-(b.due_date?new Date(b.due_date).getTime():9e15));else out.sort((a,b)=>t(b)-t(a));return out}
+function filterBar(){const cl=profiles.filter(p=>p.role==="client");const on=fq||fclient||fsort!=="recent";
+  return `<div class="fbar"><label class="fsearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="fQ" type="search" placeholder="Search videos or clients" value="${esc(fq)}" autocomplete="off"></label>
+    <select id="fC" class="fsel" aria-label="Client"><option value="">All clients</option>${cl.map(c=>`<option value="${c.id}" ${fclient===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select>
+    <select id="fS" class="fsel" aria-label="Sort"><option value="recent" ${fsort==="recent"?"selected":""}>Newest first</option><option value="oldest" ${fsort==="oldest"?"selected":""}>Oldest first</option><option value="notes" ${fsort==="notes"?"selected":""}>Most open notes</option><option value="due" ${fsort==="due"?"selected":""}>Due date</option></select>
+    ${on?`<button class="fclear" id="fX">Clear</button>`:""}</div>`}
 let me=null,profiles=[],videos=[],notes=[],versions=[],vsel={},urls={},view="",ctab="review",vfilter="all",openVideo=null,recovering=false,channel=null;
 const isAdmin=()=>me&&me.role==="admin";
 const nameOf=id=>(profiles.find(p=>p.id===id)||{}).name||"Client";
@@ -1212,7 +1227,7 @@ function accountSheet(){
 
 // ================= ADMIN =================
 function adminOverview(){
-  const needs=videos.filter(v=>v.status==="changes"),waiting=videos.filter(v=>v.status==="pending"),appr=videos.filter(v=>v.status==="approved");
+  const needs=fv(videos.filter(v=>v.status==="changes")),waiting=fv(videos.filter(v=>v.status==="pending")),appr=fv(videos.filter(v=>v.status==="approved"));
   const openCount=videos.reduce((a,v)=>a+openNotes(v).length,0);
   const h=new Date().getHours(),greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
   return `<div class="head"><div><div class="label">${new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</div><h1>${greet}</h1></div>
@@ -1222,7 +1237,7 @@ function adminOverview(){
    <div class="card stat acc"><div class="label">Waiting on client</div><div class="n">${waiting.length}</div></div>
    <div class="card stat ok"><div class="label">Approved</div><div class="n">${appr.length}</div></div>
    <div class="card stat"><div class="label">Open notes</div><div class="n">${openCount}</div></div></div>
-  <div class="section"><h2>Needs your action <span class="count">${needs.length}</span></h2>${listCard(needs,"Nothing to fix right now.")}</div>
+  ${filterBar()}<div class="section"><h2>Needs your action <span class="count">${needs.length}</span></h2>${listCard(needs,"Nothing to fix right now.")}</div>
   ${(()=>{const late=waiting.filter(v=>Date.now()-new Date(v.updated_at||v.created_at)>48*3600e3);return late.length?`<div class="section"><h2>Reminders due <span class="count">${late.length}</span></h2><div class="card list">${late.map(v=>`<div class="row"><span class="thumb"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M19 3l3 3"/></svg></span><span style="min-width:0"><span class="t" style="display:block">${esc(v.title)}</span><span class="s" style="display:block">${esc(nameOf(v.client_id))} · waiting ${ago(v.updated_at||v.created_at).replace(" ago","")}</span></span><button class="btn wa sm" data-nudge="${v.id}">Remind</button></div>`).join("")}</div></div>`:""})()}
   <div class="section"><h2>Waiting on client <span class="count">${waiting.length}</span></h2>${listCard(waiting,"No videos waiting for review.")}</div>
   ${(()=>{const soon=videos.filter(v=>v.post_at&&!v.posted&&new Date(v.post_at)>Date.now()-864e5).sort((a,b)=>new Date(a.post_at)-new Date(b.post_at));return soon.length?`<div class="section"><h2>Posting soon <span class="count">${soon.length}</span></h2><div class="card list">${soon.map(v=>`<button class="row" data-open="${v.id}"><span class="thumb">${PI.cal}</span><span style="min-width:0"><span class="t" style="display:block">${esc(v.title)}</span><span class="s" style="display:block">${esc(nameOf(v.client_id))} · ${esc(postWhen(v.post_at))}${v.platforms&&v.platforms.length?" · "+esc(v.platforms.join(", ")):""}</span></span><span></span></button>`).join("")}</div></div>`:""})()}
@@ -1236,9 +1251,9 @@ function listCard(list,emptyTxt){
       <span style="display:flex;gap:6px;align-items:center">${o?`<span class="chip changes">${o} note${o>1?"s":""}</span>`:`<span class="chip ${v.status}">${ADMIN_STATUS[v.status]}</span>`}</span></button>`}).join("")}</div>`;
 }
 function adminVideos(){
-  const cnt=s=>videos.filter(v=>v.status===s).length,list=videos.filter(v=>vfilter==="all"||v.status===vfilter);
+  const cnt=s=>fv(videos).filter(v=>v.status===s).length,list=fv(videos.filter(v=>vfilter==="all"||v.status===vfilter));
   return `<div class="head"><div><div class="label">Library</div><h1>Videos</h1></div><button class="btn primary" data-newvideo>Send video for review</button></div>
-   <div class="seg">${[["all","All",videos.length],["changes","Changes requested",cnt("changes")],["pending","Waiting on client",cnt("pending")],["approved","Approved",cnt("approved")]].map(([k,l,c])=>`<button data-vf="${k}" class="${vfilter===k?"on":""}">${l} · ${c}</button>`).join("")}</div>
+   ${filterBar()}<div class="seg">${[["all","All",fv(videos).length],["changes","Changes requested",cnt("changes")],["pending","Waiting on client",cnt("pending")],["approved","Approved",cnt("approved")]].map(([k,l,c])=>`<button data-vf="${k}" class="${vfilter===k?"on":""}">${l} · ${c}</button>`).join("")}</div>
    ${listCard(list,"No videos here.")}`;
 }
 function adminVideoDetail(){
@@ -1420,6 +1435,9 @@ function wire(){
     if(vid){setTimeout(()=>fitVideo(vid),250);setTimeout(()=>fitVideo(vid),700);setTimeout(()=>fitVideo(vid),1300);window.__fitVid=vid}});
   on("[data-ctab]",b=>{ctab=b.dataset.ctab;render()});
   on("[data-vf]",b=>{vfilter=b.dataset.vf;render()});
+  if($("#fQ")){$("#fQ").oninput=e=>{fq=e.target.value;clearTimeout(window.__fqT);window.__fqT=setTimeout(()=>{const pos=e.target.selectionStart;render();const i=$("#fQ");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(x){}}},180)};
+    $("#fC").onchange=e=>{fclient=e.target.value;render()};$("#fS").onchange=e=>{fsort=e.target.value;render()};
+    if($("#fX"))$("#fX").onclick=()=>{fq="";fclient="";fsort="recent";render()}}
   on("[data-open]",b=>{openVideo=b.dataset.open;render();scrollTo(0,0)});
   on("[data-back]",()=>{openVideo=null;render()});
   on("[data-addclient]",clientSheet);
