@@ -555,6 +555,8 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.cacts{display:inline-flex;gap:14px;justify-content:flex-end}
+.rmwarn{display:grid;gap:6px;padding:14px;border-radius:14px;background:color-mix(in srgb,#ff3b30 9%,transparent);font-size:14px}.rmwarn ul{margin:0;padding-left:18px;display:grid;gap:3px}.rmwarn span{color:#ff3b30;font-weight:600}
 .fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 18px}
 .fsearch{flex:1 1 240px;display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border-radius:12px;background:var(--panel);box-shadow:var(--lift)}
 .fsearch svg{width:17px;height:17px;color:var(--muted);flex:none}.fsearch input{flex:1;min-width:0;border:0;background:none;font:500 15px var(--font);color:var(--ink);outline:none}
@@ -1285,7 +1287,7 @@ function adminClients(){
   return `<div class="head"><div><div class="label">People</div><h1>Clients</h1></div><button class="btn primary" data-addclient>Add client</button></div>
   ${cl.length?`<div class="card list">${cl.map(c=>{const vs=videos.filter(v=>v.client_id===c.id),a=vs.filter(v=>v.status==="approved").length,ch=vs.filter(v=>v.status==="changes").length,w=vs.filter(v=>v.status==="pending").length;
    return `<div class="row"><span class="avatar">${initials(c.name)}</span><span style="min-width:0"><span class="t" style="display:block">${esc(c.name)}</span><span class="s" style="display:block">${esc(c.email)}</span></span>
-     <span class="small" style="text-align:right">${vs.length} video${vs.length===1?"":"s"}<br><span style="color:var(--ok)">${a} approved</span>${ch?` · <span style="color:var(--fix)">${ch} changes</span>`:""}${w?` · <span style="color:var(--accent)">${w} waiting</span>`:""}<br><button class="link pwlink" data-pw="${c.id}">Set new password</button></span></div>`}).join("")}</div>`
+     <span class="small" style="text-align:right">${vs.length} video${vs.length===1?"":"s"}<br><span style="color:var(--ok)">${a} approved</span>${ch?` · <span style="color:var(--fix)">${ch} changes</span>`:""}${w?` · <span style="color:var(--accent)">${w} waiting</span>`:""}<br><span class="cacts"><button class="link pwlink" data-pw="${c.id}">Set new password</button><button class="link pwlink danger" data-rmc="${c.id}">Remove</button></span></span></div>`}).join("")}</div>`
    :`<div class="card empty"><b>No clients yet</b>Create a login for your first client.</div>`}`;
 }
 
@@ -1428,6 +1430,7 @@ function wire(){
   on("[data-share]",b=>shareSheet(videos.find(x=>x.id===b.dataset.share)));
   on("[data-cap]",async b=>{const v=videos.find(x=>x.id===b.dataset.cap);try{await navigator.clipboard.writeText(v.caption);toast("Caption copied ✓")}catch(e){prompt("Copy your caption:",v.caption)}});
   on("[data-posted]",async b=>{const v=videos.find(x=>x.id===b.dataset.posted);celebrate(b);const {error}=await sb.rpc("plan_post",{vid:v.id,at:v.post_at,plats:v.platforms||[],cap:v.caption||"",done:true});if(error)return toast("Couldn’t save.",true);await load();render();toast("Nice! Marked as posted 🎉")});
+  on("[data-rmc]",b=>removeClientSheet(profiles.find(x=>x.id===b.dataset.rmc)));
   on("[data-pw]",b=>pwSheet(profiles.find(x=>x.id===b.dataset.pw)));
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
   on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);if(cmp[v.id]||vsel[v.id]&&vsel[v.id]!==v.version){cmp[v.id]=false;delete vsel[v.id];render()}const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
@@ -1647,6 +1650,22 @@ function bigFileHelp(file){const mb=(file.size/1048576).toFixed(0);
   if(m){m.className="msg";m.innerHTML=html}else toast("File is "+mb+" MB. Limit is 50 MB.",true)}
 function driveId(u){const m=String(u||"").match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/);return m?m[1]:null}
 function finalHref(v){const f=v.final_link&&/^https:/i.test(v.final_link)?v.final_link:"";if(!f)return "";const id=driveId(f);return id?"https://drive.google.com/uc?export=download&id="+id:f}
+function removeClientSheet(c){if(!c)return;
+  const vs=videos.filter(v=>v.client_id===c.id),nn=notes.filter(n=>vs.some(v=>v.id===n.video_id)).length;
+  openSheet(`<div class="rc-head"><div style="min-width:0"><div class="label">Remove client</div><h2>${esc(c.name||"Client")}</h2><div class="rc-sub">${esc(c.email||"")}</div></div><button type="button" class="iconx" id="rmX" aria-label="Close">✕</button></div>
+    <div class="rmwarn"><b>This permanently deletes:</b><ul><li>Their login. They can’t sign in any more.</li><li>${vs.length} video${vs.length===1?"":"s"} with all versions</li><li>${nn} note${nn===1?"":"s"}, voice notes and drawings</li><li>Any shared team links</li></ul><span>This can’t be undone. Download anything you want to keep first.</span></div>
+    <div class="field"><label for="rmName">Type <b>${esc((c.name||"").split(" ")[0]||"DELETE")}</b> to confirm</label><input class="input" id="rmName" autocomplete="off"></div>
+    <button class="btn lg" id="rmGo" disabled style="background:#ff3b30;color:#fff">Remove client</button><div class="msg" id="rmMsg"></div>`,
+  ()=>{$("#rmX").onclick=closeSheet;const want=((c.name||"").split(" ")[0]||"DELETE").toLowerCase();
+    $("#rmName").oninput=e=>{$("#rmGo").disabled=e.target.value.trim().toLowerCase()!==want};
+    $("#rmGo").onclick=async()=>{const b=$("#rmGo");b.disabled=true;b.textContent="Removing…";
+      try{const vids=vs.map(v=>v.id);
+        const files=[...vs.map(v=>v.storage_path),...versions.filter(x=>vids.includes(x.video_id)).map(x=>x.storage_path),...notes.filter(n=>vids.includes(n.video_id)).flatMap(n=>[n.audio_path,n.mark_path])].filter(Boolean);
+        if(files.length)await sb.storage.from("videos").remove(files);
+        const sh=vs.filter(v=>v.share_code).flatMap(v=>[v.share_code+".json",...["mp4","mov","m4v","webm"].map(e=>v.share_code+"."+e)]);if(sh.length)await sb.storage.from("shared").remove(sh);
+        const {error}=await sb.rpc("admin_delete_client",{uid:c.id});if(error)throw error;
+        closeSheet();await load();render();toast((c.name||"Client")+" removed")}
+      catch(e){b.disabled=false;b.textContent="Remove client";$("#rmMsg").textContent="Couldn’t remove: "+(e.message||e)}}})}
 function pwSheet(c){if(!c)return;
   const gen=()=>{const w=["sun","star","blue","gold","river","light","peace","grace","hope","joy"];const a=w[Math.floor(Math.random()*w.length)],b=w[Math.floor(Math.random()*w.length)];return a+"-"+b+"-"+(100+Math.floor(Math.random()*900))};
   openSheet(`<div class="rc-head"><div style="min-width:0"><div class="label">Client login</div><h2>${esc(c.name||"Client")}</h2><div class="rc-sub">${esc(c.email||"")}</div></div><button type="button" class="iconx" id="pwX" aria-label="Close">✕</button></div>
