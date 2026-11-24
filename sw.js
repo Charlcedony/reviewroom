@@ -1,6 +1,6 @@
 // Review Room service worker: makes the site installable and opens the app shell offline.
 // It never caches videos or data, so clients always see the latest version.
-const CACHE = "reviewroom-v38";
+const CACHE = "reviewroom-v39";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => {

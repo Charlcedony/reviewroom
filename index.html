@@ -555,6 +555,7 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+#sMsg:empty{display:none}
 .hello h1{font-size:24px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -843,14 +844,14 @@ function changeSheet(v,vid){
      <div class="rc-tools">${vid?`<button type="button" class="tool" id="drawBtn" aria-label="Draw on the video">${pen}</button>`:""}${window.MediaRecorder&&navigator.mediaDevices?`<button type="button" class="tool mic" id="recBtn" aria-label="Record a voice note">${mic}</button>`:""}</div></div>
    <div class="rc-att" id="markPrev" hidden></div>
    <div class="rec" id="recBox" hidden></div>
-   <div class="sendrow" id="sendRow"><button class="btn lg" id="sDone" hidden>Done</button><button class="btn primary lg" id="sSend">Send note</button></div><div class="msg" id="sMsg"></div>`,
+   <div class="msg" id="sMsg"></div><div class="sendrow" id="sendRow"><button class="btn lg" id="sDone" hidden>Done</button><button class="btn primary lg" id="sSend">Send note</button></div>`,
   ()=>{let sent=0;let secs=Math.floor(vid?vid.currentTime:0);const max=dur||99999;let picked=!vid||vid.currentTime>=1;let warned=false;
     const pickUI=()=>{const f=$("#frameBox");if(f)f.classList.toggle("needpick",!picked)};
     const paint=()=>{if(!vid)return;$("#sTime").textContent=fmt(secs);const rg=$("#sRange");rg.value=secs;rg.style.setProperty("--p",(secs/(+rg.max||1)*100)+"%")};
     const setT=s=>{secs=Math.max(0,Math.min(max,s));picked=true;pickUI();paint();if(vid){vid.pause();vid.currentTime=secs}};
     if(vid){const follow=()=>{if(!$("#sTime")||!$("#sheet").classList.contains("show"))return;secs=Math.floor(vid.currentTime);if(vid.currentTime>=1){picked=true;pickUI()}paint()};vid.addEventListener("timeupdate",follow);vid.addEventListener("seeked",follow);
       $("#tMinus").onclick=()=>setT(secs-1);$("#tPlus").onclick=()=>setT(secs+1);$("#sRange").oninput=e=>setT(+e.target.value);paint();pickUI()}
-    const fillSugg=()=>{$("#sugg").innerHTML=["Remove this part","Make it shorter","Spelling mistake","Change the wording","Different picture","Too fast","Music too loud","Add our logo"].map(t=>`<button type="button">${esc(t)}</button>`).join("")};
+    const fillSugg=()=>{$("#sugg").innerHTML=["Remove this part","Make it shorter","Spelling mistake","Different picture","Too fast","Music too loud"].map(t=>`<button type="button">${esc(t)}</button>`).join("")};
     $("#sugg").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ta=$("#sNote");ta.value=ta.value.trim()?ta.value.trim()+". "+b.textContent:b.textContent;ta.focus()};
     const sh=$("#sheet"),ta0=$("#sNote");
     ta0.addEventListener("input",()=>{ta0.style.height="auto";ta0.style.height=Math.min(140,ta0.scrollHeight)+"px"});
