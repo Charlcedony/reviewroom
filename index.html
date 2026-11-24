@@ -555,6 +555,9 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.ico{width:16px;height:16px;flex:none;vertical-align:-3px}
+.pickhint{align-items:center;gap:6px}.needpick .pickhint{display:flex}
+.btn .ico{margin-right:-2px}
 body.composing .main{padding-bottom:100vh!important}
 .rc-select{position:relative;display:block}
 .rc-select .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -790,7 +793,7 @@ function noteHtml(n,admin){
     <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button>${tags}<span class="small muted">${ago(n.created_at)}</span>${status}</div>
     ${txt&&txt!=="Voice note"&&txt!=="See the marked spot"||!n.audio_path&&!n.mark_path?(txt.length>260?`<p class="clamp">${esc(txt)}</p><button class="more" onclick="this.previousElementSibling.classList.toggle('clamp');this.textContent=this.textContent==='Show more'?'Show less':'Show more'">Show more</button>`:`<p>${esc(txt)}</p>`):""}
     ${n.audio_path&&aurls[n.audio_path]?`<audio controls preload="metadata" src="${esc(aurls[n.audio_path])}"></audio>`:""}
-    ${n.mark_path&&aurls[n.mark_path]?`<button class="btn sm markbtn" data-mark="${n.id}">✏️ See the marked spot</button>`:""}
+    ${n.mark_path&&aurls[n.mark_path]?`<button class="btn sm markbtn" data-mark="${n.id}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>See the marked spot</button>`:""}
     ${n.reply?`<div class="reply"><b>Team reply</b>${esc(n.reply)}</div>`:""}
     ${asking?`<div class="check"><span class="small">Fixed in v${vv.version}?</span><button class="btn sm ${n.client_check==="fixed"?"ok":""}" data-check="${n.id}" data-val="fixed">${n.client_check==="fixed"?"✓ Fixed":"Yes, fixed"}</button><button class="btn sm ${n.client_check==="still"?"fix":""}" data-check="${n.id}" data-val="still">Still wrong</button></div>`:""}
     ${admin?`<div class="acts"><button class="btn sm" data-reply="${n.id}">${n.reply?"Edit reply":"Reply"}</button><button class="btn sm ${n.done?"":"ok"}" data-done="${n.id}">${n.done?"Reopen":"Mark done"}</button></div>`:""}
@@ -831,7 +834,7 @@ function clientVideo(v){
     :`<div class="deliver"><div class="dl-ic">✓</div><div style="min-width:0;flex:1"><b>Final video ready</b><span class="small muted">v${v.version} · approved${v.updated_at?" "+ago(v.updated_at):""}</span></div>${v.storage_path?`<button class="btn primary" data-dl="${v.id}">Download</button>`:v.link&&/^https:/i.test(v.link)?`<a class="btn primary" href="${esc(v.link)}" target="_blank" rel="noopener">Open</a>`:""}</div>
       ${v.rating?`<div class="small muted">You rated us <span class="starsTxt">${"★".repeat(v.rating)}</span> · thank you!</div>`:`<div class="rate"><b>How was working with us on this video?</b><div class="stars">${[1,2,3,4,5].map(i=>`<button data-star="${i}" data-rv="${v.id}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div></div>`}
       <button class="btn ghost sm" data-undo="${v.id}" style="justify-self:start">Undo approval</button>`}
-    <button class="btn ghost sm" data-msg="${v.id}" style="justify-self:start">💬 Message the team</button>
+    <button class="btn ghost sm" data-msg="${v.id}" style="justify-self:start"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Message the team</button>
     ${notesByVersion(v,false)}
    </div></article>`;
 }
@@ -844,7 +847,7 @@ function changeSheet(v,vid){
   const pen='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   const mic='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>';
   openSheet(`<div class="rc-head"><div style="min-width:0"><h2>What needs changing?</h2><div class="rc-sub">${esc(v.title)} <span class="sentpill" id="sCount" hidden></span></div></div><button type="button" class="iconx" id="sClose" aria-label="Close">✕</button></div>
-   ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint">👆 Drag to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
+   ${vid?`<div class="rc-time" id="frameBox"><div class="pickhint"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12H3m0 0 3-3m-3 3 3 3M16 12h5m0 0-3-3m3 3-3 3"/></svg>Drag the slider to the moment you mean</div><div class="rc-tl"><span class="muted">At</span><b id="sTime">${fmt(vid.currentTime)}</b><span class="muted">/ ${fmt(dur)}</span><span class="rc-step"><button type="button" id="tMinus" aria-label="1 second earlier">&minus;1s</button><button type="button" id="tPlus" aria-label="1 second later">+1s</button></span></div>
      <div class="tscrub"><input type="range" id="sRange" min="0" max="${Math.max(1,dur)}" step="1" value="${Math.floor(vid.currentTime)}" aria-label="Drag to pick the moment"></div></div>`:""}
    <label class="rc-select"><span class="sr">What’s the issue?</span><select id="sIssue"><option value="">What’s the issue? (tap to choose)</option><option>Remove this part</option><option>Make it shorter</option><option>Spelling mistake</option><option>Change the wording</option><option>Text too small</option><option>Text too fast</option><option>Different picture</option><option>Picture is blurry</option><option>Music too loud</option><option>Add our logo</option><option>Colour looks off</option><option>Cut ends too early</option><option value="__other">Something else… (type it below)</option></select></label>
    <div class="rc-compose"><textarea id="sNote" rows="2" maxlength="2000" placeholder="Describe the change…"></textarea>
@@ -966,7 +969,7 @@ function adminOverview(){
    <div class="card stat ok"><div class="label">Approved</div><div class="n">${appr.length}</div></div>
    <div class="card stat"><div class="label">Open notes</div><div class="n">${openCount}</div></div></div>
   <div class="section"><h2>Needs your action <span class="count">${needs.length}</span></h2>${listCard(needs,"Nothing to fix right now.")}</div>
-  ${(()=>{const late=waiting.filter(v=>Date.now()-new Date(v.updated_at||v.created_at)>48*3600e3);return late.length?`<div class="section"><h2>Reminders due <span class="count">${late.length}</span></h2><div class="card list">${late.map(v=>`<div class="row"><span class="thumb">⏰</span><span style="min-width:0"><span class="t" style="display:block">${esc(v.title)}</span><span class="s" style="display:block">${esc(nameOf(v.client_id))} · waiting ${ago(v.updated_at||v.created_at).replace(" ago","")}</span></span><button class="btn wa sm" data-nudge="${v.id}">Remind</button></div>`).join("")}</div></div>`:""})()}
+  ${(()=>{const late=waiting.filter(v=>Date.now()-new Date(v.updated_at||v.created_at)>48*3600e3);return late.length?`<div class="section"><h2>Reminders due <span class="count">${late.length}</span></h2><div class="card list">${late.map(v=>`<div class="row"><span class="thumb"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M19 3l3 3"/></svg></span><span style="min-width:0"><span class="t" style="display:block">${esc(v.title)}</span><span class="s" style="display:block">${esc(nameOf(v.client_id))} · waiting ${ago(v.updated_at||v.created_at).replace(" ago","")}</span></span><button class="btn wa sm" data-nudge="${v.id}">Remind</button></div>`).join("")}</div></div>`:""})()}
   <div class="section"><h2>Waiting on client <span class="count">${waiting.length}</span></h2>${listCard(waiting,"No videos waiting for review.")}</div>
   <div class="section"><h2>Recently approved <span class="count">${appr.length}</span></h2>${listCard(appr.slice(0,5),"No approvals yet.")}</div>`;
 }
