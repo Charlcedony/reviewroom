@@ -555,6 +555,14 @@ body.composing .dock{visibility:hidden}
 .sheet.half{padding-bottom:0}
 .sheet .sendrow{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .danger{color:#ff3b30!important}
+.optsw{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 12px 10px;padding:3px;border-radius:12px;background:var(--fill)}
+.optsw button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:4px 8px;border:0;border-radius:9px;background:none;font:600 13.5px var(--font);color:var(--muted);min-width:0}
+.optsw button b{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--fill);font-size:12px;color:var(--ink2)}
+.optsw button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.optsw button.on{background:var(--panel);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.1)}.optsw button.on b{background:var(--accent);color:#fff}
+.altbox{border-radius:14px;background:var(--fill2)}.altbox summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:600;font-size:14px}.altbox summary::-webkit-details-marker{display:none}
+.altbox summary::before{content:"+ ";color:var(--accent)}.altbox[open] summary::before{content:"− "}
+.altin{display:grid;gap:10px;padding:0 14px 14px}.altnames{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .cacts{display:inline-flex;gap:14px;justify-content:flex-end}
 .rmwarn{display:grid;gap:6px;padding:14px;border-radius:14px;background:color-mix(in srgb,#ff3b30 9%,transparent);font-size:14px}.rmwarn ul{margin:0;padding-left:18px;display:grid;gap:3px}.rmwarn span{color:#ff3b30;font-weight:600}
 .fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 18px}
@@ -888,7 +896,14 @@ const dueTxt=d=>{if(!d)return"";const days=Math.round((new Date(d+"T00:00:00")-n
 function toast(t,bad){const el=$("#toast");el.textContent=t;el.className="toast show"+(bad?" bad":"");clearTimeout(el._t);el._t=setTimeout(()=>el.className="toast",3800)}
 
 // ================= state =================
-let cmp={};let fq="",fclient="",fsort="recent";
+let cmp={},opt={},cmpAB={};const urls2={};
+const hasOpts=v=>!!(v&&(v.alt_storage_path||v.alt_link)&&!v.chosen);
+const optName=(v,k)=>{const l=k==="b"?v.opt_b:v.opt_a;return l&&l.trim()?l.trim():(k==="b"?"Option B":"Option A")};
+function optSw(v){if(!hasOpts(v))return"";const cur=opt[v.id]==="b"?"b":"a";
+  return `<div class="optsw" role="tablist" aria-label="Choose an option">${["a","b"].map(k=>`<button role="tab" data-opt="${k}" data-ov="${v.id}" class="${cur===k?"on":""}"><b>${k.toUpperCase()}</b><span>${esc(optName(v,k).replace(/^Option [AB]$/,""))||(k==="a"?"First option":"Second option")}</span></button>`).join("")}</div>`}
+function abHtml(v){const a=urls[v.id],b=urls2[v.id];
+  return `<div class="cmp"><figure>${a?`<video data-cmpv controls playsinline muted preload="metadata" src="${esc(a.url)}#t=0.1"></video>`:""}<figcaption>A · ${esc(optName(v,"a"))}</figcaption></figure>
+    <figure>${b?`<video data-cmpv controls playsinline muted preload="metadata" src="${esc(b.url)}#t=0.1"></video>`:""}<figcaption>B · ${esc(optName(v,"b"))}</figcaption></figure></div>`}let fq="",fclient="",fsort="recent";
 function fv(list){const q=fq.trim().toLowerCase();let out=list.filter(v=>(!fclient||v.client_id===fclient)&&(!q||(v.title||"").toLowerCase().includes(q)||nameOf(v.client_id).toLowerCase().includes(q)));
   const t=v=>new Date(v.updated_at||v.created_at).getTime();
   if(fsort==="oldest")out.sort((a,b)=>t(a)-t(b));else if(fsort==="notes")out.sort((a,b)=>openNotes(b).length-openNotes(a).length);
@@ -941,6 +956,8 @@ async function load(){
   const soon=Date.now()+30*60*1000;
   await Promise.all(videos.filter(v=>v.storage_path&&(!urls[v.id]||urls[v.id].path!==v.storage_path||urls[v.id].exp<soon)).map(async v=>{
     const {data}=await sb.storage.from("videos").createSignedUrl(v.storage_path,60*60*12);if(data)urls[v.id]={path:v.storage_path,url:data.signedUrl,exp:Date.now()+60*60*12*1000}}));
+  await Promise.all(videos.filter(v=>v.alt_storage_path&&(!urls2[v.id]||urls2[v.id].path!==v.alt_storage_path||urls2[v.id].exp<soon)).map(async v=>{
+    const {data}=await sb.storage.from("videos").createSignedUrl(v.alt_storage_path,60*60*12);if(data)urls2[v.id]={path:v.alt_storage_path,url:data.signedUrl,exp:Date.now()+60*60*12*1000}}));
 }
 function openDeepLink(){
   let id=new URLSearchParams(location.search).get("watch");
@@ -984,7 +1001,7 @@ async function storageMeter(){const box=$("#storeBox");if(!box||!isAdmin())retur
   $("#stTxt").textContent=mb.toFixed(0)+" MB of 1 GB";$("#stBar").style.width=pct+"%";$("#stBar").className=pct>85?"bad":pct>65?"warn":"";
   const old=versions.filter(x=>x.storage_path&&videos.some(v=>v.id===x.video_id&&v.status==="approved"));
   const stale=videos.filter(v=>v.share_code&&v.status==="approved"&&v.post_at&&new Date(v.post_at)<Date.now()-30*864e5);
-  const n=old.length+stale.length;const cl=$("#stClean");cl.hidden=!n;
+  const unused=videos.filter(v=>v.chosen&&v.alt_storage_path&&v.status==="approved");const n=old.length+stale.length+unused.length;const cl=$("#stClean");cl.hidden=!n;
   $("#stHint").textContent=n?`${old.length} old version file${old.length===1?"":"s"} on approved videos can be removed`:pct>65?"Getting full: delete finished projects you no longer need":"Free plan: 1 GB";
   cl.onclick=async()=>{if(cl.dataset.c!=="1"){cl.dataset.c="1";cl.textContent="Tap again to confirm";setTimeout(()=>{cl.dataset.c="";cl.textContent="Free up space"},3500);return}
     cl.disabled=true;cl.textContent="Cleaning…";
@@ -992,6 +1009,7 @@ async function storageMeter(){const box=$("#storeBox");if(!box||!isAdmin())retur
     if(v.share_code)await sb.storage.from("shared").remove([v.share_code+".json",...["mp4","mov","m4v","webm"].map(e=>v.share_code+"."+e)]);
     const extra=notes.filter(n=>n.video_id===v.id).flatMap(n=>[n.audio_path,n.mark_path]).filter(Boolean);if(extra.length)await sb.storage.from("videos").remove(extra);
     if(old.length)await sb.from("video_versions").delete().in("id",old.map(x=>x.id));
+    for(const v of unused){await sb.storage.from("videos").remove([v.alt_storage_path]);await sb.from("videos").update({alt_storage_path:null}).eq("id",v.id)}
     for(const v of stale){await sb.storage.from("shared").remove([v.share_code+".json",...["mp4","mov","m4v","webm"].map(e=>v.share_code+"."+e)]);await sb.rpc("set_share_code",{vid:v.id,code:null})}
     await load();render();toast("Space freed ✓")}}
 function syncTopCal(){const b=$("#topCal");if(!b)return;const show=!isAdmin()&&videos.some(v=>v.status==="approved");b.hidden=!show;
@@ -1023,11 +1041,11 @@ function vbox(vid){const vr=vid.getBoundingClientRect(),pr=vid.parentElement.get
 function cmpHtml(v){const o=versions.filter(x=>x.video_id===v.id).slice(-1)[0];const ou=o&&vurls[o.id],u=urls[v.id];
   return `<div class="cmp"><figure>${ou?`<video data-cmpv controls playsinline muted preload="metadata" src="${esc(ou)}#t=0.1"></video>`:`<div class="ext small">Loading…</div>`}<figcaption>Before · v${o.version}</figcaption></figure>
     <figure>${u?`<video data-cmpv controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`:""}<figcaption>After · v${v.version}</figcaption></figure></div>`}
-function cmpBtn(v){const o=versions.filter(x=>x.video_id===v.id).slice(-1)[0];if(!o||!o.storage_path||!urls[v.id])return"";
+function cmpBtn(v){if(hasOpts(v)&&urls[v.id]&&urls2[v.id])return `<div class="cmpbar"><button class="btn sm" data-cmpab="${v.id}">${cmpAB[v.id]?"Back to normal view":"Compare A / B"}</button>${cmpAB[v.id]?`<button class="btn sm primary" data-cmpplay>Play both</button>`:""}</div>`;const o=versions.filter(x=>x.video_id===v.id).slice(-1)[0];if(!o||!o.storage_path||!urls[v.id])return"";
   return `<div class="cmpbar"><button class="btn sm" data-cmp="${v.id}">${cmp[v.id]?"Back to normal view":"Compare before / after"}</button>${cmp[v.id]?`<button class="btn sm primary" data-cmpplay>Play both</button>`:""}</div>`}
-function playerHtml(v){if(cmp[v.id])return cmpHtml(v);const sel=vsel[v.id];if(sel&&sel!==v.version){const o=versions.find(x=>x.video_id===v.id&&x.version===sel);const ou=o&&vurls[o.id];
+function playerHtml(v){if(cmpAB[v.id]&&hasOpts(v))return abHtml(v);if(cmp[v.id])return cmpHtml(v);const isB=hasOpts(v)&&opt[v.id]==="b";if(isB)v={...v,storage_path:v.alt_storage_path,link:v.alt_link};const sel=vsel[v.id];if(sel&&sel!==v.version){const o=versions.find(x=>x.video_id===v.id&&x.version===sel);const ou=o&&vurls[o.id];
     return `<div class="player old">${ou?`<video data-oldid="${o.id}" controls playsinline preload="metadata" src="${esc(ou)}#t=0.1"></video>`:`<div class="ext"><span class="small">Loading version ${sel}…</span></div>`}<span class="ptag">Older version ${sel}</span></div>`}
-  const u=urls[v.id];const safeLink=/^https:\/\//i.test(v.link||"")?v.link:"";
+  const u=isB?urls2[v.id]:urls[v.id];const safeLink=/^https:\/\//i.test(v.link||"")?v.link:"";
   return `<div class="player">${u?`<span class="ptag ${isAdmin()&&v.due_date&&v.status==="pending"&&/^Was due/.test(dueTxt(v.due_date))?"late":""}">v${v.version}${isAdmin()&&v.due_date&&v.status==="pending"?" · "+esc(dueTxt(v.due_date)):""}</span><video data-id="${v.id}" controls playsinline preload="metadata" src="${esc(u.url)}#t=0.1"></video>`
     :v.storage_path?`<div class="ext"><span class="small">The video couldn’t load.</span><button class="btn sm" onclick="load().then(()=>render())">Try again</button></div>`
     :safeLink&&driveId(safeLink)?`<div class="drv"><iframe src="https://drive.google.com/file/d/${esc(driveId(safeLink))}/preview" allow="autoplay; fullscreen" allowfullscreen loading="lazy" title="Video"></iframe></div><div class="drvlink"><a href="https://drive.google.com/file/d/${esc(driveId(safeLink))}/view" target="_blank" rel="noopener">Open full screen in Google Drive ↗</a></div>`
@@ -1043,7 +1061,7 @@ function noteHtml(n,admin){
   const asking=!admin&&n.done&&vv&&vv.status==="pending"&&vv.version>n.version;
   const status=asking?"":n.client_check==="still"?`<span class="chip changes" style="height:22px">${admin?"Client: still wrong":"You said: still wrong"}</span>`:n.client_check==="fixed"&&admin?`<span class="chip approved" style="height:22px">Client: fixed ✓</span>`:n.done?`<span class="chip approved" style="height:22px">${fixedLbl}</span>`:"";
   return `<li class="note ${n.done&&n.client_check!=="still"?"done":""}">
-    <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button>${tags}<span class="small muted">${ago(n.created_at)}</span>${status}</div>
+    <div class="top2"><button class="time" data-jump="${n.video_id}" data-t="${n.seconds}">${esc(n.time_label)}</button>${n.opt?`<span class="tag" style="--c:var(--accent)">Option ${esc(n.opt.toUpperCase())}</span>`:""}${tags}<span class="small muted">${ago(n.created_at)}</span>${status}</div>
     ${txt&&txt!=="Voice note"&&txt!=="See the marked spot"||!n.audio_path&&!n.mark_path?(txt.length>260?`<p class="clamp">${esc(txt)}</p><button class="showmore" onclick="this.previousElementSibling.classList.toggle('clamp');this.textContent=this.textContent==='Show more'?'Show less':'Show more'">Show more</button>`:`<p>${esc(txt)}</p>`):""}
     ${n.audio_path&&aurls[n.audio_path]?`<audio controls preload="metadata" src="${esc(aurls[n.audio_path])}"></audio>`:""}
     ${n.mark_path&&aurls[n.mark_path]?`<button class="btn sm markbtn" data-mark="${n.id}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>See the marked spot</button>`:""}
@@ -1088,9 +1106,9 @@ function clientVideo(v){
         ${cmpBtn(v)}${fromTeam}${notesByVersion(v,false)||'<div class="small muted">No notes on this video.</div>'}
         <div class="more-acts"><button class="btn sm" data-change="${v.id}">Add a note</button><button class="btn ghost sm" data-undo="${v.id}">Undo approval</button></div></div></details>
      </div></article>`}
-  return `<article class="card video rise">${head}
+  return `<article class="card video rise">${head}${optSw(v)}
    ${playerHtml(v)}
-   ${v.status==="pending"?`<div class="dock"><button class="btn fix lg" data-change="${v.id}">Request changes</button><button class="btn ok lg" data-approve="${v.id}">Approve</button></div>`:""}
+   ${v.status==="pending"?`<div class="dock"><button class="btn fix lg" data-change="${v.id}">Request changes</button><button class="btn ok lg" data-approve="${v.id}">Approve${hasOpts(v)?" "+(opt[v.id]==="b"?"B":"A"):""}</button></div>`:""}
    <div class="vbody">
     ${(()=>{const fx=v.status==="pending"?vn.filter(n=>n.done&&n.version<v.version&&!n.client_check).length:0;return fx?`<div class="banner ok">We made ${fx} change${fx>1?"s":""} you asked for. Please check ${fx>1?"them":"it"} below.</div>`:""})()}
     ${cmpBtn(v)}
@@ -1207,7 +1225,7 @@ function changeSheet(v,vid){
         if(up.error){b.disabled=false;b.classList.remove("busy");$("#sMsg").textContent="Couldn’t upload the voice note. Try again.";return}}
       let mark_path=null;
       if(markBlob){mark_path=`${me.id}/marks/${crypto.randomUUID()}.png`;const mu=await sb.storage.from("videos").upload(mark_path,markBlob,{contentType:"image/png"});if(mu.error)mark_path=null}
-      let {error}=await sb.from("corrections").insert({video_id:v.id,type,time_label:time,seconds:at1,note,version:v.version,audio_path,mark_path});
+      let {error}=await sb.from("corrections").insert({video_id:v.id,type,time_label:time,seconds:at1,note,version:v.version,audio_path,mark_path,opt:hasOpts(v)?(opt[v.id]==="b"?"b":"a"):null});
       if(!error&&v.status!=="approved")({error}=await sb.rpc("set_video_status",{vid:v.id,new_status:"changes"}));
       if(error){b.disabled=false;b.classList.remove("busy");$("#sMsg").textContent="Couldn’t send. Check your connection and try again.";return}
       sent++;ctab="changes";
@@ -1264,9 +1282,9 @@ function adminVideoDetail(){
   const v=videos.find(x=>x.id===openVideo);if(!v){openVideo=null;return adminOverview()}
   const vn=notes.filter(n=>n.video_id===v.id),o=openNotes(v).length;
   return `<button class="btn ghost sm" data-back style="margin-bottom:12px">← Back</button>
-  <article class="card video">${versions.some(x=>x.video_id===v.id)?`<header class="vhead"><span class="small muted">Compare versions</span>${versionBar(v)}</header>`:""}${playerHtml(v)}
+  <article class="card video">${versions.some(x=>x.video_id===v.id)?`<header class="vhead"><span class="small muted">Compare versions</span>${versionBar(v)}</header>`:""}${optSw(v)}${playerHtml(v)}
    <div class="vbody">
-    <div class="metaline"><span class="chip ${v.status}">${ADMIN_STATUS[v.status]}</span><span class="chip plain">Version ${v.version}</span><span>${esc(nameOf(v.client_id))}</span>${v.due_date?`<span>· ${dueTxt(v.due_date)}</span>`:""}</div>
+    <div class="metaline"><span class="chip ${v.status}">${ADMIN_STATUS[v.status]}</span><span class="chip plain">Version ${v.version}</span>${v.chosen?`<span class="chip approved">Client chose: ${esc(v.chosen)}</span>`:hasOpts(v)?`<span class="chip plain">2 options</span>`:""}<span>${esc(nameOf(v.client_id))}</span>${v.due_date?`<span>· ${dueTxt(v.due_date)}</span>`:""}</div>
     <h3>${esc(v.title)}</h3>
     ${cmpBtn(v)}
     ${v.post_at?`<div class="note-from"><div class="label">Client’s posting plan</div><p>${v.posted?"✓ Posted · ":""}${esc(postWhen(v.post_at))}${v.platforms&&v.platforms.length?" on "+esc(v.platforms.join(", ")):""}${v.caption?"<br><span class=small>“"+esc(v.caption)+"”</span>":""}</p></div>`:""}
@@ -1316,7 +1334,10 @@ function videoForm(v,mode){ // mode: new | version | edit
    <div class="field"><label for="fTitle">Title</label><input class="input" id="fTitle" placeholder="e.g. Short 1 – The leper healed"></div>`:""}
    ${mode==="edit"?`<div class="field"><label for="fTitle">Title</label><input class="input" id="fTitle" value="${esc(v.title)}"></div>`:""}
    ${mode!=="edit"?`<label class="drop" id="fDrop"><input type="file" id="fFile" accept="video/*" hidden><b style="color:var(--ink)">Choose the video file</b><br><span class="small">MP4 or MOV, up to 50 MB</span></label>
-   <div class="field"><label for="fLink">Or paste a link instead <span class="muted">(Google Drive · plays inside the app)</span></label><input class="input" id="fLink" type="url" placeholder="https://"></div>`:""}
+   <div class="field"><label for="fLink">Or paste a link instead <span class="muted">(Google Drive · plays inside the app)</span></label><input class="input" id="fLink" type="url" placeholder="https://"></div>
+   <details class="altbox"><summary>Add a second option for the client to choose <span class="muted">(optional)</span></summary><div class="altin">
+     <label class="drop" id="fAltDrop"><input type="file" id="fAlt" accept="video/*" hidden><b style="color:var(--ink)">Choose option B file</b><br><span class="small">Up to 50 MB</span></label>
+     <div class="altnames"><input class="input" id="fOptA" placeholder="Name for A (e.g. With music)"><input class="input" id="fOptB" placeholder="Name for B (e.g. No music)"></div></div></details>`:""}
    <div class="field"><label for="fMsg">Message to the client <span class="muted">(optional)</span></label><textarea class="input" id="fMsg" placeholder="${mode==="version"?"e.g. We trimmed the intro and fixed the title spelling.":"e.g. Here’s the first cut. Please check the captions and music."}">${mode==="edit"?esc(v.message||""):""}</textarea></div>
    <div class="field"><label for="fFinal">Final full-quality file <span class="muted">(optional · Google Drive link)</span></label><input class="input" id="fFinal" type="url" placeholder="https://drive.google.com/…" value="${mode!=="new"&&v.final_link?esc(v.final_link):""}"><span class="small muted">Share it as “Anyone with the link”. Clients download this after approving.</span></div>
    <div class="field"><label for="fDue">Review by <span class="muted">(optional)</span></label><input class="input" id="fDue" type="date" value="${mode!=="new"&&v.due_date?v.due_date:""}"></div>
@@ -1332,12 +1353,16 @@ function wireVideoForm(v,mode){
   if(f)f.onchange=()=>{const file=f.files[0];if(!file)return;$("#fDrop").classList.add("has");
     $("#fDrop").querySelector("b").textContent=file.name;$("#fDrop").querySelector("span").textContent=(file.size/1048576).toFixed(1)+" MB · tap to change";
     const t=$("#fTitle");if(t&&!t.value)t.value=file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ")};
+  const fa=$("#fAlt");if(fa)fa.onchange=()=>{const x=fa.files[0];if(!x)return;$("#fAltDrop").classList.add("has");$("#fAltDrop").querySelector("b").textContent=x.name;$("#fAltDrop").querySelector("span").textContent=(x.size/1048576).toFixed(1)+" MB · tap to change"};
   $("#fGo").onclick=async()=>{
     const m=$("#fMsgOut");m.className="msg";const b=$("#fGo");
     const title=$("#fTitle")?$("#fTitle").value.trim():"",file=f?f.files[0]:null,link=$("#fLink")?$("#fLink").value.trim():"",final_link=($("#fFinal")&&$("#fFinal").value.trim())||null,message=$("#fMsg").value.trim()||null,due_date=$("#fDue").value||null;
     if(mode!=="version"&&!title){m.textContent="Add a title.";return}
     if(mode!=="edit"&&!file&&!link){m.textContent="Choose a video file or paste a link.";return}
     if(file&&file.size>50*1048576){m.textContent="That file is over 50 MB. Paste a share link instead.";return}
+    const altFile=$("#fAlt")&&$("#fAlt").files[0]||null,opt_a=($("#fOptA")&&$("#fOptA").value.trim())||null,opt_b=($("#fOptB")&&$("#fOptB").value.trim())||null;
+    if(altFile&&altFile.size>50*1048576){m.textContent="Option B is over 50 MB. Export it smaller.";return}
+    if(altFile&&!file){m.textContent="Add the main video file too (option A) to offer two options.";return}
     b.disabled=true;
     try{
       if(mode==="edit"){const {error}=await sb.from("videos").update({title,message,due_date,final_link}).eq("id",v.id);if(error)throw error;closeSheet();await load();render();toast("Saved");return}
@@ -1345,12 +1370,17 @@ function wireVideoForm(v,mode){
       let storage_path=null;
       if(file&&file.size>50*1048576){b.disabled=false;b.textContent=mode==="new"?"Send for review":"Upload";bigFileHelp(file);return}
       if(file){$("#fBar").hidden=false;b.textContent="Uploading…";storage_path=`${client_id}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
-        await uploadWithProgress(storage_path,file,p=>$("#fBar i").style.width=p+"%")}
+        await uploadWithProgress(storage_path,file,p=>$("#fBar i").style.width=(altFile?p/2:p)+"%")}
+      let alt_storage_path=null;
+      if(altFile){b.textContent="Uploading option B…";alt_storage_path=`${client_id}/${crypto.randomUUID()}-B-${altFile.name.replace(/[^\w.\-]/g,"_")}`;
+        await uploadWithProgress(alt_storage_path,altFile,p=>$("#fBar i").style.width=(50+p/2)+"%")}
+      const altCols={alt_storage_path,alt_link:null,opt_a:altFile?opt_a:null,opt_b:altFile?opt_b:null,chosen:null};
       const now=new Date().toISOString();
-      const row=mode==="new"?{client_id,title,storage_path,link:file?null:link,final_link,message,due_date,version:1,status:"pending",updated_at:now}
-        :{storage_path,link:file?null:link,final_link,message,due_date,version:v.version+1,status:"pending",updated_at:now};
+      const row=mode==="new"?{client_id,title,storage_path,link:file?null:link,final_link,message,due_date,version:1,status:"pending",updated_at:now,...altCols}
+        :{storage_path,link:file?null:link,final_link,message,due_date,version:v.version+1,status:"pending",updated_at:now,...altCols};
       const {error}=mode==="new"?await sb.from("videos").insert(row):await sb.from("videos").update(row).eq("id",v.id);
-      if(error){if(storage_path)await sb.storage.from("videos").remove([storage_path]);throw error}
+      if(error){const rm=[storage_path,alt_storage_path].filter(Boolean);if(rm.length)await sb.storage.from("videos").remove(rm);throw error}
+      if(mode==="version"&&v.alt_storage_path)await sb.storage.from("videos").remove([v.alt_storage_path]);
       if(mode==="version"&&(v.storage_path||v.link))await sb.from("video_versions").insert({video_id:v.id,version:v.version,storage_path:v.storage_path,link:v.link});
       if(mode==="version")delete vsel[v.id];
       closeSheet();await load();render();toast(mode==="new"?"Sent. Your client can watch it now.":"Version "+(v.version+1)+" sent to the client.");
@@ -1399,11 +1429,15 @@ function wire(){
         $("#wWeb").onclick=()=>window.open("https://web.whatsapp.com/send?text="+enc,"_blank","noopener");
         $("#wCopy").onclick=async()=>{try{await navigator.clipboard.writeText(txt);toast("Message copied. Paste it in WhatsApp.")}catch(e){prompt("Copy this message:",txt)}}})});
   on("[data-copylink]",async b=>{const v=videos.find(x=>x.id===b.dataset.copylink);try{await navigator.clipboard.writeText(shareLink(v));toast("Link copied")}catch(e){prompt("Copy this link:",shareLink(v))}});
-  on("[data-approve]",async b=>{const id=b.dataset.approve;b.disabled=true;if(!await setStatus(id,"approved","")){b.disabled=false;return}celebrate(b);undoBar("Approved. Thank you!",()=>setStatus(id,"pending","Moved back to review"))});
+  on("[data-approve]",async b=>{const id=b.dataset.approve;b.disabled=true;const vv=videos.find(x=>x.id===id);
+    if(hasOpts(vv)){const {error}=await sb.rpc("choose_option",{vid:id,pick:opt[id]==="b"?"b":"a"});if(error){toast("Couldn’t save your choice. Try again.",true);b.disabled=false;return}delete opt[id];cmpAB[id]=false}
+    if(!await setStatus(id,"approved","")){b.disabled=false;return}celebrate(b);undoBar("Approved. Thank you!",()=>setStatus(id,"pending","Moved back to review"))});
   on("[data-vsel]",async b=>{const id=b.dataset.vsel,ver=+b.dataset.ver,v=videos.find(x=>x.id===id);vsel[id]=ver;
     const o=versions.find(x=>x.video_id===id&&x.version===ver);
     if(o&&ver!==v.version&&!vurls[o.id]){render();if(o.storage_path){const {data}=await sb.storage.from("videos").createSignedUrl(o.storage_path,60*60*6);if(data)vurls[o.id]=data.signedUrl}else if(o.link&&/^https:/i.test(o.link)){window.open(o.link,"_blank","noopener")}}
     render()});
+  on("[data-opt]",b=>{opt[b.dataset.ov]=b.dataset.opt;render()});
+  on("[data-cmpab]",b=>{cmpAB[b.dataset.cmpab]=!cmpAB[b.dataset.cmpab];render()});
   on("[data-cmp]",async b=>{const id=b.dataset.cmp;cmp[id]=!cmp[id];const o=versions.filter(x=>x.video_id===id).slice(-1)[0];
     render();if(cmp[id]&&o&&!vurls[o.id]&&o.storage_path){const {data}=await sb.storage.from("videos").createSignedUrl(o.storage_path,60*60*6);if(data)vurls[o.id]=data.signedUrl;render()}});
   on("[data-cmpplay]",b=>{const vs=[...b.closest(".card").querySelectorAll("video[data-cmpv]")];const go=vs.some(x=>x.paused);vs.forEach(x=>{if(go){x.currentTime=vs[0].currentTime;x.play().catch(()=>{})}else x.pause()});b.textContent=go?"Pause both":"Play both"});
@@ -1435,7 +1469,7 @@ function wire(){
   on("[data-rmc]",b=>removeClientSheet(profiles.find(x=>x.id===b.dataset.rmc)));
   on("[data-pw]",b=>pwSheet(profiles.find(x=>x.id===b.dataset.pw)));
   on("[data-undo]",b=>setStatus(b.dataset.undo,"pending","Moved back to review"));
-  on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);if(cmp[v.id]||vsel[v.id]&&vsel[v.id]!==v.version){cmp[v.id]=false;delete vsel[v.id];render()}const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
+  on("[data-change]",b=>{const v=videos.find(x=>x.id===b.dataset.change);if(cmpAB[v.id]){cmpAB[v.id]=false;render()}if(cmp[v.id]||vsel[v.id]&&vsel[v.id]!==v.version){cmp[v.id]=false;delete vsel[v.id];render()}const vid=main.querySelector(`video[data-id="${v.id}"]`);if(vid){vid.pause();const top=vid.getBoundingClientRect().top+scrollY-($(".top")&&getComputedStyle($(".top")).display!=="none"?$(".top").offsetHeight:0)-8;scrollTo({top,behavior:"instant"})}
     $("#sheet").classList.add("half");$("#scrim").classList.add("light");document.body.classList.add("composing");changeSheet(v,vid);
     if(vid){setTimeout(()=>fitVideo(vid),250);setTimeout(()=>fitVideo(vid),700);setTimeout(()=>fitVideo(vid),1300);window.__fitVid=vid}});
   on("[data-ctab]",b=>{ctab=b.dataset.ctab;render()});
@@ -1455,7 +1489,7 @@ function wire(){
   on("[data-remove]",async b=>{if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Tap again to delete";setTimeout(()=>{b.dataset.c="";b.textContent="Delete"},3500);return}
     const v=videos.find(x=>x.id===b.dataset.remove);const {error}=await sb.from("videos").delete().eq("id",v.id);
     if(error)return toast("Couldn’t delete: "+error.message,true);
-    const paths=[v.storage_path,...versions.filter(x=>x.video_id===v.id).map(x=>x.storage_path)].filter(Boolean);
+    const paths=[v.storage_path,v.alt_storage_path,...versions.filter(x=>x.video_id===v.id).map(x=>x.storage_path)].filter(Boolean);
     if(paths.length)await sb.storage.from("videos").remove(paths);openVideo=null;await load();render();toast("Video deleted")});
 }
 function waOpen(txt,title){const enc=encodeURIComponent(txt);
